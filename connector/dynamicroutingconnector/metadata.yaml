@@ -14,7 +14,7 @@ status:
 
 attributes:
   cardinality_bucket:
-    description: Cardinality bucket identifier derived from routing_pipelines.
+    description: Cardinality bucket identifier. One of the range buckets derived from routing_pipelines, "default" for requests with no partition key, or "static" for requests matched by a static_routes entry.
     type: string
   partition_key:
     description: Composite partition key built from routing_keys.partition_by values.

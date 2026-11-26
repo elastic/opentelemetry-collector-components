@@ -54,6 +54,10 @@ func TestInitRegistersBenchmarkExporterFlags(t *testing.T) {
 			name:         "exporter-prometheusremotewrite",
 			defaultValue: "false",
 		},
+		{
+			name:         "exporter-http",
+			defaultValue: "false",
+		},
 	}
 
 	for _, tc := range cases {
@@ -78,14 +82,18 @@ func TestInitRegistersMetricsGenFlag(t *testing.T) {
 	t.Cleanup(func() {
 		flag.CommandLine = oldCommandLine
 		Config.MetricsGen = false
+		Config.MetricsGenBenchmark = false
 	})
 
 	require.NoError(t, Init())
 
 	require.NotNil(t, flag.Lookup("metricsgen"))
+	require.NotNil(t, flag.Lookup("metricsgen-benchmark"))
 	require.Nil(t, flag.Lookup("config-prw"))
 	require.Nil(t, flag.Lookup("metrics-generator"))
 
 	require.NoError(t, flag.Set("metricsgen", "true"))
 	require.True(t, Config.MetricsGen)
+	require.NoError(t, flag.Set("metricsgen-benchmark", "false"))
+	require.False(t, Config.MetricsGenBenchmark)
 }

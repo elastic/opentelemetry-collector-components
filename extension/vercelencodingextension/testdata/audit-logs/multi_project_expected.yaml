@@ -1,0 +1,90 @@
+resourceLogs:
+  - resource:
+      attributes:
+        - key: vercel.team.id
+          value:
+            stringValue: team_1
+        - key: vercel.project.id
+          value:
+            stringValue: proj_A
+    scopeLogs:
+      - logRecords:
+          - attributes:
+              - key: log.record.uid
+                value:
+                  stringValue: uev_mp_1
+              - key: vercel.actor.type
+                value:
+                  stringValue: user
+              - key: user.id
+                value:
+                  stringValue: user_1
+              - key: user.name
+                value:
+                  stringValue: User One
+              - key: vercel.request.id
+                value:
+                  stringValue: req_1
+            body: {}
+            eventName: deployment.created
+            timeUnixNano: "1779444000123000000"
+          - attributes:
+              - key: log.record.uid
+                value:
+                  stringValue: uev_mp_2
+              - key: vercel.actor.type
+                value:
+                  stringValue: user
+              - key: user.id
+                value:
+                  stringValue: user_1
+              - key: user.name
+                value:
+                  stringValue: User One
+              - key: vercel.request.id
+                value:
+                  stringValue: req_2
+            body: {}
+            eventName: deployment.promoted
+            timeUnixNano: "1779444005000000000"
+        scope:
+          attributes:
+            - key: encoding.format
+              value:
+                stringValue: vercel.auditlog.v1
+          name: otelcol/vercel_encoding
+  - resource:
+      attributes:
+        - key: vercel.team.id
+          value:
+            stringValue: team_1
+        - key: vercel.project.id
+          value:
+            stringValue: proj_B
+    scopeLogs:
+      - logRecords:
+          - attributes:
+              - key: log.record.uid
+                value:
+                  stringValue: uev_mp_3
+              - key: vercel.actor.type
+                value:
+                  stringValue: system
+              - key: user.id
+                value:
+                  stringValue: system
+              - key: user.name
+                value:
+                  stringValue: System
+              - key: vercel.request.id
+                value:
+                  stringValue: req_3
+            body: {}
+            eventName: project.env.created
+            timeUnixNano: "1779444010000000000"
+        scope:
+          attributes:
+            - key: encoding.format
+              value:
+                stringValue: vercel.auditlog.v1
+          name: otelcol/vercel_encoding

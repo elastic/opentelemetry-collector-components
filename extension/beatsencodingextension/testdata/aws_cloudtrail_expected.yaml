@@ -25,20 +25,28 @@ resourceLogs:
                               "awsRegion": "us-east-1",
                               "eventTime": "2026-01-15T10:30:00Z"
                             }
-                  - key: event.dataset
+                  - key: event
                     value:
-                      stringValue: aws.cloudtrail
-                  - key: data_stream.type
+                      kvlistValue:
+                        values:
+                          - key: dataset
+                            value:
+                              stringValue: aws.cloudtrail
+                  - key: data_stream
                     value:
-                      stringValue: logs
-                  - key: data_stream.dataset
-                    value:
-                      stringValue: aws.cloudtrail
-                  - key: data_stream.namespace
-                    value:
-                      stringValue: default
-            observedTimeUnixNano: "1773919567374642000"
-            timeUnixNano: "1773919567374642000"
+                      kvlistValue:
+                        values:
+                          - key: type
+                            value:
+                              stringValue: logs
+                          - key: dataset
+                            value:
+                              stringValue: aws.cloudtrail
+                          - key: namespace
+                            value:
+                              stringValue: default
+            observedTimeUnixNano: "1784122727853106000"
+            timeUnixNano: "1784122727853106000"
           - attributes:
               - key: data_stream.type
                 value:
@@ -62,20 +70,28 @@ resourceLogs:
                               "awsRegion": "us-west-2",
                               "eventTime": "2026-01-15T10:30:01Z"
                             }
-                  - key: event.dataset
+                  - key: event
                     value:
-                      stringValue: aws.cloudtrail
-                  - key: data_stream.type
+                      kvlistValue:
+                        values:
+                          - key: dataset
+                            value:
+                              stringValue: aws.cloudtrail
+                  - key: data_stream
                     value:
-                      stringValue: logs
-                  - key: data_stream.dataset
-                    value:
-                      stringValue: aws.cloudtrail
-                  - key: data_stream.namespace
-                    value:
-                      stringValue: default
-            observedTimeUnixNano: "1773919567374642000"
-            timeUnixNano: "1773919567374642000"
+                      kvlistValue:
+                        values:
+                          - key: type
+                            value:
+                              stringValue: logs
+                          - key: dataset
+                            value:
+                              stringValue: aws.cloudtrail
+                          - key: namespace
+                            value:
+                              stringValue: default
+            observedTimeUnixNano: "1784122727853106000"
+            timeUnixNano: "1784122727853106000"
         scope:
           attributes:
             - key: elastic.mapping.mode

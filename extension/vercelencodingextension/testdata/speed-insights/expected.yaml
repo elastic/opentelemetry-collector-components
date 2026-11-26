@@ -1,0 +1,59 @@
+resourceMetrics:
+  - resource:
+      attributes:
+        - key: vercel.owner.id
+          value:
+            stringValue: team_nLlpyC6REAqxydlFKbrMDlud
+        - key: vercel.project.id
+          value:
+            stringValue: Qmc52npNy86S8VV4Mt8a8dP1LEkRNbgosW3pBCQytkcgf2
+    scopeMetrics:
+      - metrics:
+          - gauge:
+              dataPoints:
+                - asDouble: 0.1
+                  attributes:
+                    - key: device.id
+                      value:
+                        stringValue: "12345"
+                    - key: url.domain
+                      value:
+                        stringValue: example.com
+                    - key: url.full
+                      value:
+                        stringValue: https://example.com/dashboard
+                    - key: url.path
+                      value:
+                        stringValue: /dashboard
+                    - key: url.scheme
+                      value:
+                        stringValue: https
+                  timeUnixNano: "1694705400000000000"
+            name: CLS
+          - gauge:
+              dataPoints:
+                - asDouble: 2.5
+                  attributes:
+                    - key: device.id
+                      value:
+                        stringValue: "67890"
+                    - key: url.domain
+                      value:
+                        stringValue: example.com
+                    - key: url.full
+                      value:
+                        stringValue: https://example.com/home
+                    - key: url.path
+                      value:
+                        stringValue: /home
+                    - key: url.scheme
+                      value:
+                        stringValue: https
+                  timeUnixNano: "1694705405000000000"
+            name: LCP
+        scope:
+          attributes:
+            - key: encoding.format
+              value:
+                stringValue: vercel.speedinsights.v1
+          name: otelcol/vercel_encoding

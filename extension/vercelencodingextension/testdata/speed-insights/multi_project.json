@@ -1,0 +1,5 @@
+[
+  { "schema": "vercel.speed_insights.v1", "timestamp": "2023-09-14T15:30:00.000Z", "projectId": "proj_A", "ownerId": "team_1", "metricType": "CLS", "value": 0.1 },
+  { "schema": "vercel.speed_insights.v1", "timestamp": "2023-09-14T15:30:05.000Z", "projectId": "proj_A", "ownerId": "team_1", "metricType": "CLS", "value": 0.2 },
+  { "schema": "vercel.speed_insights.v1", "timestamp": "2023-09-14T15:30:10.000Z", "projectId": "proj_B", "ownerId": "team_1", "metricType": "LCP", "value": 2.5 }
+]

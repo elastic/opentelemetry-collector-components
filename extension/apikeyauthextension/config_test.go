@@ -25,8 +25,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/confmap"
 	"go.opentelemetry.io/collector/confmap/confmaptest"
-	"go.opentelemetry.io/collector/confmap/xconfmap"
 
 	"github.com/elastic/opentelemetry-collector-components/extension/apikeyauthextension/internal/metadata"
 )
@@ -43,6 +43,31 @@ func TestLoadConfig(t *testing.T) {
 		{
 			id:       component.NewID(metadata.Type),
 			expected: createDefaultConfig().(*Config),
+		},
+		{
+			id: component.NewIDWithName(metadata.Type, "custom_header"),
+			expected: func() *Config {
+				config := createDefaultConfig().(*Config)
+				config.Header = "X-Amz-Firehose-Access-Key"
+				config.Scheme = ""
+				return config
+			}(),
+		},
+		{
+			id:                 component.NewIDWithName(metadata.Type, "empty_header"),
+			expectedErrMessage: "header must be non-empty",
+		},
+		{
+			id:                 component.NewIDWithName(metadata.Type, "header_with_space"),
+			expectedErrMessage: `header "Foo Bar" must be a valid HTTP header name without whitespace or colons`,
+		},
+		{
+			id:                 component.NewIDWithName(metadata.Type, "header_with_colon"),
+			expectedErrMessage: `header "Authorization:" must be a valid HTTP header name without whitespace or colons`,
+		},
+		{
+			id:                 component.NewIDWithName(metadata.Type, "scheme_with_space"),
+			expectedErrMessage: `scheme "Api Key" must not contain whitespace`,
 		},
 		{
 			id: component.NewIDWithName(metadata.Type, "application_privileges"),
@@ -202,7 +227,7 @@ func TestLoadConfig(t *testing.T) {
 			id: component.NewIDWithName(metadata.Type, "custom_timeout"),
 			expected: func() *Config {
 				config := createDefaultConfig().(*Config)
-				config.Timeout = 7 * time.Second
+				config.ClientConfig.Timeout = 7 * time.Second
 				return config
 			}(),
 		},
@@ -213,6 +238,35 @@ func TestLoadConfig(t *testing.T) {
 		{
 			id:                 component.NewIDWithName(metadata.Type, "invalid_client_retry_delay"),
 			expectedErrMessage: `client_retry: invalid retry_delay: 0s, must be greater than 0`,
+		},
+		{
+			id:                 component.NewIDWithName(metadata.Type, "application_privileges_missing_resources"),
+			expectedErrMessage: `application_privileges::0: resources or dynamic_resources must be non-empty`,
+		},
+		{
+			id: component.NewIDWithName(metadata.Type, "any_of"),
+			expected: func() *Config {
+				config := createDefaultConfig().(*Config)
+				config.AnyOf = apmOrDynamicSource()
+				config.Cache.KeyMetadata = []string{"X-Source-Id"}
+				return config
+			}(),
+		},
+		{
+			id:                 component.NewIDWithName(metadata.Type, "any_of_empty_set"),
+			expectedErrMessage: `any_of::0: application_privileges must be non-empty`,
+		},
+		{
+			id:                 component.NewIDWithName(metadata.Type, "any_of_missing_resources"),
+			expectedErrMessage: `any_of::0::application_privileges::0: resources or dynamic_resources must be non-empty`,
+		},
+		{
+			id:                 component.NewIDWithName(metadata.Type, "any_of_missing_privileges"),
+			expectedErrMessage: `any_of::0::application_privileges::0: privileges must be non-empty`,
+		},
+		{
+			id:                 component.NewIDWithName(metadata.Type, "any_of_missing_cache_key_metadata"),
+			expectedErrMessage: `any_of::0::application_privileges::0::dynamic_resources::0: dynamic resource metadata "X-Source-Id" must be included in cache.key_metadata`,
 		},
 	}
 	for _, tt := range tests {
@@ -232,7 +286,7 @@ func TestLoadConfig(t *testing.T) {
 			}
 			assert.NoError(t, err)
 
-			err = xconfmap.Validate(cfg)
+			err = confmap.Validate(cfg)
 			if tt.expectedErrMessage != "" {
 				require.Error(t, err)
 				assert.EqualError(t, err, tt.expectedErrMessage)

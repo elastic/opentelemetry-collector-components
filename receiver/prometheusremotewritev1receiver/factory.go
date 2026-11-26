@@ -39,13 +39,13 @@ func NewFactory() receiver.Factory {
 }
 
 func createDefaultConfig() component.Config {
+	serverConfig := confighttp.NewDefaultServerConfig()
+	serverConfig.NetAddr = confignet.AddrConfig{
+		Endpoint:  "localhost:9090",
+		Transport: confignet.TransportTypeTCP,
+	}
 	return &Config{
-		ServerConfig: confighttp.ServerConfig{
-			NetAddr: confignet.AddrConfig{
-				Endpoint:  "localhost:9090",
-				Transport: confignet.TransportTypeTCP,
-			},
-		},
+		ServerConfig: serverConfig,
 	}
 }
 

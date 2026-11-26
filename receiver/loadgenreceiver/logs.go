@@ -64,9 +64,10 @@ func createLogsReceiver(
 	genConfig := config.(*Config)
 
 	parser := plog.JSONUnmarshaler{}
-	var sampleLogs io.Reader = bytes.NewReader(demoLogs)
+	var sampleLogs io.Reader
 
-	if genConfig.Logs.Path != "" {
+	switch {
+	case genConfig.Logs.Path != "":
 		var rc io.ReadCloser
 		rc, err = openJSONLFile(genConfig.Logs.JsonlFile)
 		if err != nil {
@@ -78,6 +79,13 @@ func createLogsReceiver(
 			}
 		}()
 		sampleLogs = rc
+	default:
+		var data []byte
+		data, err = logsPresetData(genConfig.Logs.Preset)
+		if err != nil {
+			return nil, err
+		}
+		sampleLogs = bytes.NewReader(data)
 	}
 
 	maxBufferSize := genConfig.Logs.MaxBufferSize
@@ -148,6 +156,9 @@ func (ar *logsGenerator) Start(ctx context.Context, _ component.Host) error {
 					ar.stats.Requests++
 					ar.stats.LogRecords += recordCount
 					ar.statsMu.Unlock()
+				}
+				if !waitJitter(startCtx, ar.cfg.Logs.Jitter) {
+					return
 				}
 			}
 		}()

@@ -9,8 +9,9 @@ with db-backed persistence so aggregation state can survive restarts and large b
 
 1. Incoming metrics are merged into a Pebble database using a custom merger that aggregates by
    resource, scope, metric, and datapoint identity.
-2. Each aggregation key includes the interval duration, the current processing window, and optional
-   `metadata_keys` from the client context so different tenants can be isolated.
+2. Each aggregation key includes the interval duration, the current processing window (the
+   processing time truncated to the interval), and optional `metadata_keys` from the client context
+   so different tenants can be isolated.
 3. A timer runs on the smallest configured interval. When it fires, the processor commits pending
    batches and exports aggregated metrics for every interval that has reached its boundary.
 4. Optional OTTL statements on each interval run after a metric has matured for that interval.
@@ -26,12 +27,15 @@ with db-backed persistence so aggregation state can survive restarts and large b
 | `intervals` | list | `[60s]` | Interval configurations. Durations must be increasing and a factor of the smallest interval. |
 | `intervals[].duration` | duration | required | Aggregation window for the interval. |
 | `intervals[].statements` | list | `[]` | OTTL datapoint statements applied after aggregation for this interval. |
-| `metadata_keys` | list | `[]` | Client metadata keys to partition aggregation. Keys are case-insensitive and must be unique. |
+| `metadata_keys` | list | `[]` | Client metadata keys to partition aggregation. Keys are case-insensitive and must be unique. The processor adds a hash of the keys and their values to the exported resources. To learn how this keeps one writer per stream, refer to [Metadata keys and single writer](#metadata-keys-and-single-writer). |
 | `resource_limit` | object | `{}` | Resource cardinality limit (`max_cardinality`) and overflow attributes. |
 | `scope_limit` | object | `{}` | Scope cardinality limit (`max_cardinality`) and overflow attributes. |
 | `metric_limit` | object | `{}` | Metric cardinality limit (`max_cardinality`) and overflow attributes. |
 | `datapoint_limit` | object | `{}` | Datapoint cardinality limit (`max_cardinality`) and overflow attributes. |
 | `exponential_histogram_max_buckets` | int | `160` | Maximum buckets for merged exponential histograms. |
+| `storage.memtable_size` | int | `33554432` (32MiB) | Size in bytes of each Pebble memtable. Must be between 16MiB and 4GiB. |
+| `storage.memtable_stop_writes_threshold` | int | `2` | Number of memtables (active plus queued for flush) at which writes stop until a flush completes. Must be at least 2. |
+| `storage.max_concurrent_compactions` | int | `1` | Maximum number of Pebble compactions run concurrently. Must be at least 1. |
 
 `max_cardinality` values of `0` disable overflow tracking for that level.
 
@@ -73,6 +77,73 @@ processors:
         attributes:
           - key: datapoint_overflow
             value: true
+```
+
+### Metadata keys and single writer
+
+Every distinct combination of `metadata_keys` values is aggregated separately. The processor
+assumes that the metrics it receives obey the
+[single-writer principle](https://opentelemetry.io/docs/specs/otel/metrics/data-model/#single-writer)
+and only aggregates them, so this option is the only way it can export one stream from more than
+one writer. That happens when a key splits the aggregation without changing the identity of the
+exported streams. For example, with a key such as `kafka.partition`, the same stream seen on two
+partitions is aggregated separately for each partition, and the processor exports both with the
+same identity.
+
+Because this option can break the single-writer guarantee, the processor restores it, in the same way as the
+[signal to metrics connector](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/connector/signaltometricsconnector#single-writer):
+the configured metadata keys and their values are hashed together (xxhash64) and the hash is
+added to every exported resource as `lsminterval.metadata.hash`. The statements of an interval
+run before the attribute is added, so they cannot remove it. Data that carries none of the
+configured keys is exported unchanged.
+
+A resource may already carry the attribute, for example when it comes from an upstream
+`lsminterval` processor. Resources that differ only in it are different streams, so the existing
+value is hashed into the new one instead of being replaced.
+
+Notes:
+
+- The hash is part of the identity of the exported streams, so its algorithm and encoding are
+  fixed. It does not depend on the order of the keys in the config, and the raw values are not
+  exposed.
+- Values aggregated separately behave as if they were aggregated by different collectors: each
+  has its own cardinality limits, and a stream seen under N combinations of metadata values is
+  exported N times per window, so queries must sum across them.
+- Upgrading from a version that does not add the attribute changes the resources of all metrics
+  aggregated with `metadata_keys`. Where resource attributes are time series dimensions, such as
+  in an Elasticsearch time series data stream, existing series get a new identity once.
+
+### Storage tuning
+
+Every `ConsumeMetrics` call appends a merge operand per interval to the Pebble key for its
+interval, processing window and metadata. When a memtable flushes, Pebble merges the operands
+that share a key. If flushes can't keep up with ingestion, writes stop once
+`storage.memtable_stop_writes_threshold` memtables are full. While writes are stopped, the
+processor holds its mutex, so every `ConsumeMetrics` caller waits.
+
+Raising `storage.memtable_size` and `storage.memtable_stop_writes_threshold` reduces these stalls in
+two ways. Each flush merges more operands per key, and more flush latency can be absorbed before
+writes stop. The cost is memory:
+
+- The memtables themselves need about `memtable_size * memtable_stop_writes_threshold` bytes.
+- In practice, resident memory grows by several times that amount, because flushing larger
+  memtables allocates more while merging.
+
+Size the memory limit with headroom and measure before rolling out. The defaults are unchanged.
+
+Compactions merge the operands of a key across on-disk files after they have been flushed.
+`storage.max_concurrent_compactions` lets Pebble run more of them in parallel, which costs CPU and
+only helps when compaction, not flushing, falls behind (Pebble reports those stalls with a
+different reason than memtable stalls).
+
+```yaml
+processors:
+  lsminterval:
+    directory: /var/lib/otel/lsminterval
+    storage:
+      memtable_size: 67108864 # 64MiB
+      memtable_stop_writes_threshold: 4
+      max_concurrent_compactions: 2
 ```
 
 ### Overflow handling

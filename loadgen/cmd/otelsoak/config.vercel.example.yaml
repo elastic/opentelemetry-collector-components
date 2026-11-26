@@ -1,0 +1,73 @@
+# otelsoak example: POST Vercel drain NDJSON to a Managed Inputs endpoint.
+#
+# VERCEL_SIGNAL selects the embedded loadgen logs preset (default: logs):
+#   logs | speed_insights | both
+# These map to loadgenreceiver presets vercel_logs / vercel_speed_insights /
+# vercel_both (fixtures embedded in the receiver).
+#
+# Example:
+#   make genelasticcol
+#   VERCEL_SIGNAL=speed_insights \
+#   ELASTIC_SERVER_URL=https://<deployment>.ingest.<region>.<csp>.qa.elastic.cloud \
+#   ELASTIC_APM_API_KEY=<encoded-api-key> \
+#   ./loadgen/cmd/otelsoak/otelsoak --config ./loadgen/cmd/otelsoak/config.vercel.example.yaml
+#
+# Each loadgen log body is one Vercel drain JSON line (logs or speed-insights).
+# The http exporter joins bodies with newlines and POSTs them as
+# application/json (not OTLP) to the same Managed Input URL.
+
+receivers:
+  loadgen:
+    concurrency: 4
+    logs:
+      preset: vercel_${env:VERCEL_SIGNAL:-logs}
+
+processors:
+  # vercelencodingextension reads event time (and log id / SI deviceId) from the
+  # drain JSON body, not the OTLP log timestamp loadgen rewrites. Refresh body
+  # fields each send so documents keep advancing under concurrency.
+  transform/vercel_refresh:
+    error_mode: ignore
+    log_statements:
+      - context: log
+        statements:
+          # Speed Insights: ISO timestamp + unique deviceId
+          - replace_pattern(body, "\"timestamp\":\"[^\"]+\"", Concat(["\"timestamp\":\"", FormatTime(Now(), "%Y-%m-%dT%H:%M:%S.%f%j"), "\""], "")) where IsString(body) and IsMatch(body, "vercel\\.speed_insights\\.v1")
+          - replace_pattern(body, "\"deviceId\":\\d+", Concat(["\"deviceId\":", String(UnixNano(Now()))], "")) where IsString(body) and IsMatch(body, "vercel\\.speed_insights\\.v1")
+          # Vercel logs: unix-millis timestamp(s) + unique id (also used as log.record.uid)
+          - replace_pattern(body, "\"timestamp\":\\d+", Concat(["\"timestamp\":", String(UnixMilli(Now()))], "")) where IsString(body) and IsMatch(body, "vercel\\.speed_insights\\.v1") == false
+          - replace_pattern(body, "\"id\":\"[^\"]+\"", Concat(["\"id\":\"", UUID(), "\""], "")) where IsString(body) and IsMatch(body, "vercel\\.speed_insights\\.v1") == false
+
+  ratelimit:
+    strategy: requests
+    rate: 100
+    burst: 100
+    throttle_behavior: delay
+
+exporters:
+  http:
+    endpoint: "${env:ELASTIC_SERVER_URL}/inputs/vercel/_default_"
+    headers:
+      - name: Authorization
+        value: "ApiKey ${env:ELASTIC_APM_API_KEY}"
+    tls:
+      insecure_skip_verify: true
+    timeout: 60s
+    sending_queue:
+      enabled: false
+  debug:
+
+service:
+  pipelines:
+    logs:
+      receivers: [loadgen]
+      processors: [transform/vercel_refresh, ratelimit]
+      exporters: [http, debug]
+  telemetry:
+    metrics:
+      readers:
+        - pull:
+            exporter:
+              prometheus:
+                host: '127.0.0.1'
+                port: 8888

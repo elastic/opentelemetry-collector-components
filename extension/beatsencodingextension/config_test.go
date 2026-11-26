@@ -24,8 +24,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/confmap"
 	"go.opentelemetry.io/collector/confmap/confmaptest"
-	"go.opentelemetry.io/collector/confmap/xconfmap"
 
 	"github.com/elastic/opentelemetry-collector-components/extension/beatsencodingextension/internal/metadata"
 )
@@ -136,7 +136,7 @@ func TestLoadConfig(t *testing.T) {
 			require.NoError(t, err)
 			require.NoError(t, sub.Unmarshal(cfg))
 
-			err = xconfmap.Validate(cfg)
+			err = confmap.Validate(cfg)
 			if tt.wantErr != "" {
 				require.Error(t, err)
 				assert.Contains(t, err.Error(), tt.wantErr)
@@ -145,6 +145,36 @@ func TestLoadConfig(t *testing.T) {
 
 			require.NoError(t, err)
 			assert.Equal(t, tt.expected, cfg)
+		})
+	}
+}
+
+func TestConfigValidate_RootArray(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		unwrap  []string
+		wantErr string
+	}{
+		{name: "root array alone", unwrap: []string{".[]"}},
+		{name: "root array with a key before it", unwrap: []string{"data", ".[]"}, wantErr: `unwrap ".[]" must be the only element`},
+		{name: "root array with a key after it", unwrap: []string{".[]", "items"}, wantErr: `unwrap ".[]" must be the only element`},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := createDefaultConfig().(*Config)
+			cfg.Unwrap = tt.unwrap
+			cfg.DataStream.Dataset = "test"
+
+			err := cfg.Validate()
+			if tt.wantErr == "" {
+				require.NoError(t, err)
+				return
+			}
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), tt.wantErr)
 		})
 	}
 }

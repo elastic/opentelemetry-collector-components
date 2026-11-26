@@ -61,6 +61,74 @@ dynamicrouting/invalid-dynamic-pipelines/valid:
         - logs/final
       max_cardinality: .inf
 
+dynamicrouting/valid-static-routes:
+  routing_keys:
+    partition_by: ["x-tenant"]
+    measure_by: ["x-forwarded-for"]
+  default_pipelines:
+    - logs/default
+  recording_interval: 1m
+  ttl: 5m
+  routing_pipelines:
+    - pipelines:
+        - logs/final
+      max_cardinality: .inf
+  static_routes:
+    - conditions:
+        - 'otelcol.client.metadata["x-tenant"][0] == "gold-1"'
+        - 'otelcol.client.metadata["x-tenant"][0] == "gold-2"'
+      pipelines:
+        - logs/gold
+
+dynamicrouting/invalid-static-routes/no-conditions:
+  routing_keys:
+    partition_by: ["x-tenant"]
+  default_pipelines:
+    - logs/default
+  recording_interval: 1m
+  ttl: 5m
+  routing_pipelines:
+    - pipelines:
+        - logs/final
+      max_cardinality: .inf
+  static_routes:
+    - conditions: []
+      pipelines:
+        - logs/gold
+
+dynamicrouting/invalid-static-routes/invalid-condition:
+  routing_keys:
+    partition_by: ["x-tenant"]
+  default_pipelines:
+    - logs/default
+  recording_interval: 1m
+  ttl: 5m
+  routing_pipelines:
+    - pipelines:
+        - logs/final
+      max_cardinality: .inf
+  static_routes:
+    - conditions:
+        - 'not valid ottl'
+      pipelines:
+        - logs/gold
+
+dynamicrouting/invalid-static-routes/no-pipelines:
+  routing_keys:
+    partition_by: ["x-tenant"]
+  default_pipelines:
+    - logs/default
+  recording_interval: 1m
+  ttl: 5m
+  routing_pipelines:
+    - pipelines:
+        - logs/final
+      max_cardinality: .inf
+  static_routes:
+    - conditions:
+        - 'otelcol.client.metadata["x-tenant"][0] == "gold"'
+      pipelines: []
+
 dynamicrouting/invalid-recording-interval:
   routing_keys:
     partition_by: ["x-tenant"]

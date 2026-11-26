@@ -19,6 +19,7 @@ package beatsencodingextension // import "github.com/elastic/opentelemetry-colle
 
 import (
 	"fmt"
+	"slices"
 )
 
 // Format defines how the incoming raw bytes should be interpreted.
@@ -47,6 +48,11 @@ const (
 
 	// FieldTypeInteger maps to pcommon.Map.PutInt.
 	FieldTypeInteger FieldType = "Integer"
+
+	// unwrapRootArray is the unwrap value that says the root of each
+	// top-level JSON value is the array to split. It is the string the Beats
+	// aws-s3 input accepts in expand_event_list_from_field for the same case.
+	unwrapRootArray = ".[]"
 )
 
 // DataStreamConfig defines the data stream routing attributes.
@@ -89,9 +95,11 @@ type Config struct {
 	// Unwrap is the sequence of JSON object keys to traverse in order
 	// to reach the target array whose elements become individual log records.
 	// For example, ["records"] navigates into {"records": [...]}, and
-	// ["data", "items"] navigates into {"data": {"items": [...]}}.
-	// Only used when Format is "json". When empty, the entire input
-	// is treated as a single record.
+	// ["data", "items"] navigates into {"data": {"items": [...]}}, and
+	// [".[]"] means the root value is the array. The path is applied to
+	// every top-level JSON value in the input.
+	// Only used when Format is "json". When empty, every top-level value
+	// is a record.
 	Unwrap []string `mapstructure:"unwrap,omitempty"`
 
 	// DataStream defines the data stream routing attributes.
@@ -148,6 +156,10 @@ func (c *Config) Validate() error {
 
 	if len(c.Unwrap) > 0 && c.Format != FormatJSON {
 		return fmt.Errorf("unwrap is only supported when format is %q", FormatJSON)
+	}
+
+	if slices.Contains(c.Unwrap, unwrapRootArray) && len(c.Unwrap) != 1 {
+		return fmt.Errorf("unwrap %q must be the only element, it names the root array", unwrapRootArray)
 	}
 
 	if c.Format != FormatCSV &&

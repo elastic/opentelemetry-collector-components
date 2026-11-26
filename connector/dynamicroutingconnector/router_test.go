@@ -287,6 +287,257 @@ func TestDynamicroutingRoutedTelemetry(t *testing.T) {
 	}
 }
 
+func TestStaticRouteRouting(t *testing.T) {
+	pipelineDefault := pipeline.NewIDWithName(pipeline.SignalMetrics, "default")
+	pipelineStatic := pipeline.NewIDWithName(pipeline.SignalMetrics, "static")
+	pipelineStatic2 := pipeline.NewIDWithName(pipeline.SignalMetrics, "static2")
+	pipelineInf := pipeline.NewIDWithName(pipeline.SignalMetrics, "inf")
+
+	tests := []struct {
+		name         string
+		staticRoutes []StaticRoute
+		inputMeta    map[string][]string
+		wantPipeline pipeline.ID
+		wantNoHLL    bool // static match must not record HLL cardinality
+	}{
+		{
+			name: "single_condition_match",
+			staticRoutes: []StaticRoute{{
+				Conditions: []string{`otelcol.client.metadata["x-tenant-id"][0] == "gold"`},
+				Pipelines:  []pipeline.ID{pipelineStatic},
+			}},
+			inputMeta:    map[string][]string{"x-tenant-id": {"gold"}},
+			wantPipeline: pipelineStatic,
+			wantNoHLL:    true,
+		},
+		{
+			name: "single_condition_no_match_falls_to_default",
+			staticRoutes: []StaticRoute{{
+				Conditions: []string{`otelcol.client.metadata["x-tenant-id"][0] == "gold"`},
+				Pipelines:  []pipeline.ID{pipelineStatic},
+			}},
+			inputMeta:    map[string][]string{"x-tenant-id": {"regular"}},
+			wantPipeline: pipelineDefault,
+		},
+		{
+			name: "and_conditions_both_match",
+			staticRoutes: []StaticRoute{{
+				Conditions: []string{`otelcol.client.metadata["x-tenant-id"][0] == "gold" and otelcol.client.metadata["x-region"][0] == "us-east-1"`},
+				Pipelines:  []pipeline.ID{pipelineStatic},
+			}},
+			inputMeta:    map[string][]string{"x-tenant-id": {"gold"}, "x-region": {"us-east-1"}},
+			wantPipeline: pipelineStatic,
+			wantNoHLL:    true,
+		},
+		{
+			name: "and_conditions_partial_match_falls_to_default",
+			staticRoutes: []StaticRoute{{
+				Conditions: []string{`otelcol.client.metadata["x-tenant-id"][0] == "gold" and otelcol.client.metadata["x-region"][0] == "us-east-1"`},
+				Pipelines:  []pipeline.ID{pipelineStatic},
+			}},
+			inputMeta:    map[string][]string{"x-tenant-id": {"gold"}, "x-region": {"eu-west-1"}},
+			wantPipeline: pipelineDefault,
+		},
+		{
+			name: "first_match_wins",
+			staticRoutes: []StaticRoute{
+				{
+					Conditions: []string{`otelcol.client.metadata["x-tenant-id"][0] == "gold"`},
+					Pipelines:  []pipeline.ID{pipelineStatic},
+				},
+				{
+					Conditions: []string{`otelcol.client.metadata["x-tenant-id"][0] == "gold"`},
+					Pipelines:  []pipeline.ID{pipelineStatic2},
+				},
+			},
+			inputMeta:    map[string][]string{"x-tenant-id": {"gold"}},
+			wantPipeline: pipelineStatic,
+			wantNoHLL:    true,
+		},
+		{
+			name:         "no_static_routes_falls_to_default",
+			staticRoutes: nil,
+			inputMeta:    map[string][]string{"x-tenant-id": {"gold"}},
+			wantPipeline: pipelineDefault,
+		},
+		{
+			name: "or_conditions_match",
+			staticRoutes: []StaticRoute{{
+				Conditions: []string{
+					`otelcol.client.metadata["x-tenant-id"][0] == "gold"`,
+					`otelcol.client.metadata["x-tenant-id"][0] == "platinum"`,
+				},
+				Pipelines: []pipeline.ID{pipelineStatic},
+			}},
+			inputMeta:    map[string][]string{"x-tenant-id": {"platinum"}},
+			wantPipeline: pipelineStatic,
+			wantNoHLL:    true,
+		},
+		{
+			name: "exists_condition_match",
+			staticRoutes: []StaticRoute{{
+				Conditions: []string{`otelcol.client.metadata["x-tenant-id"] != nil`},
+				Pipelines:  []pipeline.ID{pipelineStatic},
+			}},
+			inputMeta:    map[string][]string{"x-tenant-id": {"any-value"}},
+			wantPipeline: pipelineStatic,
+			wantNoHLL:    true,
+		},
+		{
+			name: "exists_condition_no_match_falls_to_default",
+			staticRoutes: []StaticRoute{{
+				Conditions: []string{`otelcol.client.metadata["x-tenant-id"] != nil`},
+				Pipelines:  []pipeline.ID{pipelineStatic},
+			}},
+			inputMeta:    map[string][]string{},
+			wantPipeline: pipelineDefault,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			synctest.Test(t, func(t *testing.T) {
+				sinks := map[pipeline.ID]*consumertest.MetricsSink{
+					pipelineDefault: new(consumertest.MetricsSink),
+					pipelineStatic:  new(consumertest.MetricsSink),
+					pipelineStatic2: new(consumertest.MetricsSink),
+					pipelineInf:     new(consumertest.MetricsSink),
+				}
+				consumers := make(map[pipeline.ID]consumer.Metrics, len(sinks))
+				for id, s := range sinks {
+					consumers[id] = s
+				}
+				routerAndConsumer := connector.NewMetricsRouter(consumers)
+
+				cfg := &Config{
+					RoutingKeys:       RoutingKeys{PartitionBy: []string{"x-tenant-id"}, MeasureBy: []string{"x-forwarded-for"}},
+					DefaultPipelines:  []pipeline.ID{pipelineDefault},
+					RoutingPipelines:  []RoutingPipeline{{Pipelines: []pipeline.ID{pipelineInf}, MaxCardinality: math.Inf(1)}},
+					RecordingInterval: 10 * time.Millisecond,
+					TTL:               40 * time.Millisecond,
+					StaticRoutes:      tt.staticRoutes,
+				}
+
+				connSet := connectortest.NewNopSettings(metadata.Type)
+				connSet.Logger = zaptest.NewLogger(t)
+				conn, err := NewFactory().CreateMetricsToMetrics(
+					context.Background(), connSet, cfg, routerAndConsumer.(consumer.Metrics),
+				)
+				require.NoError(t, err)
+				require.NoError(t, conn.Start(context.Background(), nil))
+				defer func() { require.NoError(t, conn.Shutdown(context.Background())) }()
+
+				ctx := contextWithMetadata(tt.inputMeta)
+				require.NoError(t, conn.ConsumeMetrics(ctx, newTestMetrics("1", "1", "1", "1")))
+
+				require.Len(t, sinks[tt.wantPipeline].AllMetrics(), 1)
+				for id, s := range sinks {
+					if id != tt.wantPipeline {
+						require.Empty(t, s.AllMetrics(), "unexpected data in sink %s", id)
+					}
+				}
+
+				if tt.wantNoHLL {
+					r := conn.(*metricsConnector).router
+					r.mu.Lock()
+					hllLen := len(r.m)
+					r.mu.Unlock()
+					require.Zero(t, hllLen, "static route must not record cardinality")
+				}
+			})
+		})
+	}
+}
+
+func TestStaticRouteTelemetry(t *testing.T) {
+	pipelineDefault := pipeline.NewIDWithName(pipeline.SignalMetrics, "default")
+	pipelineStatic := pipeline.NewIDWithName(pipeline.SignalMetrics, "static")
+	pipelineInf := pipeline.NewIDWithName(pipeline.SignalMetrics, "inf")
+
+	tests := []struct {
+		name         string
+		staticRoutes []StaticRoute
+		inputMeta    map[string][]string
+		wantDPs      []metricdata.DataPoint[int64]
+	}{
+		{
+			name: "static_match_emits_static_bucket",
+			staticRoutes: []StaticRoute{{
+				Conditions: []string{`otelcol.client.metadata["x-tenant-id"][0] == "gold"`},
+				Pipelines:  []pipeline.ID{pipelineStatic},
+			}},
+			inputMeta: map[string][]string{"x-tenant-id": {"gold"}},
+			wantDPs: []metricdata.DataPoint[int64]{
+				{
+					Value: 1,
+					Attributes: attribute.NewSet(
+						attribute.String("cardinality_bucket", "static"),
+						attribute.String("partition_key", ""),
+					),
+				},
+			},
+		},
+		{
+			name:         "no_static_routes_emits_default_bucket",
+			staticRoutes: nil,
+			inputMeta:    map[string][]string{},
+			wantDPs: []metricdata.DataPoint[int64]{
+				{
+					Value: 1,
+					Attributes: attribute.NewSet(
+						attribute.String("cardinality_bucket", "default"),
+						attribute.String("partition_key", ""),
+					),
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			synctest.Test(t, func(t *testing.T) {
+				testTel := componenttest.NewTelemetry()
+				defer func() { require.NoError(t, testTel.Shutdown(context.Background())) }()
+
+				routerAndConsumer := connector.NewMetricsRouter(map[pipeline.ID]consumer.Metrics{
+					pipelineDefault: consumertest.NewNop(),
+					pipelineStatic:  consumertest.NewNop(),
+					pipelineInf:     consumertest.NewNop(),
+				})
+
+				cfg := &Config{
+					RoutingKeys:       RoutingKeys{PartitionBy: []string{"x-tenant-id"}, MeasureBy: []string{"x-forwarded-for"}},
+					DefaultPipelines:  []pipeline.ID{pipelineDefault},
+					RoutingPipelines:  []RoutingPipeline{{Pipelines: []pipeline.ID{pipelineInf}, MaxCardinality: math.Inf(1)}},
+					RecordingInterval: time.Second,
+					TTL:               5 * time.Second,
+					StaticRoutes:      tt.staticRoutes,
+				}
+
+				connSet := connectortest.NewNopSettings(metadata.Type)
+				connSet.TelemetrySettings = testTel.NewTelemetrySettings()
+				connSet.Logger = zaptest.NewLogger(t)
+				conn, err := NewFactory().CreateMetricsToMetrics(
+					context.Background(), connSet, cfg, routerAndConsumer.(consumer.Metrics),
+				)
+				require.NoError(t, err)
+				require.NoError(t, conn.Start(context.Background(), nil))
+				defer func() { require.NoError(t, conn.Shutdown(context.Background())) }()
+
+				ctx := contextWithMetadata(tt.inputMeta)
+				require.NoError(t, conn.ConsumeMetrics(ctx, newTestMetrics("1", "1", "1", "1")))
+
+				metadatatest.AssertEqualDynamicroutingRouted(
+					t,
+					testTel,
+					tt.wantDPs,
+					metricdatatest.IgnoreTimestamp(),
+				)
+			})
+		})
+	}
+}
+
 // Helpers
 
 func newTestMetricsConnector(t *testing.T, recordingInterval, ttl time.Duration) (

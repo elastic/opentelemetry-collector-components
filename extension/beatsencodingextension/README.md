@@ -11,7 +11,7 @@ Every record also gets a baseline `@timestamp` (the decode time, like a Beats do
 | Field                   | Type           | Default      | Description                                                                                                                                    |
 |-------------------------|----------------|--------------|------------------------------------------------------------------------------------------------------------------------------------------------|
 | `format`                | string         | `json`       | Input format: `json`, `text`, or `csv`.                                                                                                        |
-| `unwrap`                | []string       | _(empty)_    | Sequence of JSON object keys to traverse to reach the target array (e.g., `["records"]` or `["data", "items"]`). Only used with `json` format. |
+| `unwrap`                | []string       | _(empty)_    | Sequence of JSON object keys to traverse to reach the target array (e.g., `["records"]` or `["data", "items"]`), or `[".[]"]` when the root value is the array. Only used with `json` format. |
 | `mappings`              | []object       | _(empty)_    | Field extraction rules for JSON array elements (see below). Only used with `json` format and `unwrap`.                                         |
 | `mappings.source`       | string         | _(required)_ | JSON key to read from the decoded object.                                                                                                      |
 | `mappings.destination`  | string         | _(required)_ | Key to write in the log body map.                                                                                                              |
@@ -30,7 +30,7 @@ Every record also gets a baseline `@timestamp` (the decode time, like a Beats do
 
 ### Formats
 
-- **`json`** — The entire input is a JSON document. When `unwrap` is set, the extension traverses the listed keys to reach a target array and extracts each element as a separate log record (e.g., `["records"]` for Azure Diagnostic Settings, `["Records"]` for AWS CloudTrail). When `unwrap` is empty, the entire input is treated as a single record.
+- **`json`** — One or more JSON values, one after another (a single document, or newline-delimited objects). Without `unwrap`, every top-level value becomes a log record. With `unwrap`, the extension traverses the listed keys inside each value to reach an array and emits each element as a log record (e.g., `["records"]` for Azure Diagnostic Settings, `["Records"]` for AWS CloudTrail); keys after the array are skipped. `[".[]"]` means the root value itself is the array. This is how the Beats `aws-s3` input reads JSON objects with `expand_event_list_from_field`.
 - **`text`** — Newline-delimited text. Each non-empty line becomes a separate log record.
 - **`csv`** — CSV input. The first record (or `csv.fields_names`, if set) is the header; each subsequent record becomes a log record whose `message` is a JSON object keyed by the header. The `csv.*` options mirror the Beats `aws-s3` input's `decoding.codec.csv` settings. A single malformed record (wrong field count, or a stray quote without `csv.lazy_quotes`) fails the whole input, matching the Beats codec's strict behaviour.
 

@@ -18,33 +18,86 @@
 package elasticapmintakereceiver
 
 import (
+	"bytes"
+	"context"
+	"io"
+	"net"
+	"net/http"
 	"path/filepath"
+	"sync/atomic"
 	"testing"
 	"time"
 
+	"github.com/elastic/opentelemetry-collector-components/internal/testutil"
 	"github.com/elastic/opentelemetry-collector-components/receiver/elasticapmintakereceiver/internal/metadata"
 	"github.com/elastic/opentelemetry-lib/config/configelasticsearch"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/component/componenttest"
 	"go.opentelemetry.io/collector/config/confighttp"
 	"go.opentelemetry.io/collector/config/confignet"
+	"go.opentelemetry.io/collector/confmap"
 	"go.opentelemetry.io/collector/confmap/confmaptest"
-	"go.opentelemetry.io/collector/confmap/xconfmap"
+	"go.opentelemetry.io/collector/consumer/consumertest"
+	"go.opentelemetry.io/collector/receiver/receivertest"
 )
+
+func TestKeepAlivesEnabled(t *testing.T) {
+	factory := NewFactory()
+	testEndpoint := testutil.GetAvailableLocalAddress(t)
+	cfg := factory.CreateDefaultConfig().(*Config)
+	cfg.ServerConfig.NetAddr.Endpoint = testEndpoint
+	cfg.BatchFlushInterval = 0
+
+	set := receivertest.NewNopSettings(metadata.Type)
+	rcvr, err := factory.CreateTraces(context.Background(), set, cfg, new(consumertest.TracesSink))
+	require.NoError(t, err)
+	require.NoError(t, rcvr.Start(context.Background(), componenttest.NewNopHost()))
+	defer func() { require.NoError(t, rcvr.Shutdown(context.Background())) }()
+
+	var dialCount atomic.Int32
+	httpClient := &http.Client{Transport: &http.Transport{
+		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+			dialCount.Add(1)
+			return (&net.Dialer{}).DialContext(ctx, network, addr)
+		},
+	}}
+
+	body := []byte(
+		`{"metadata":{"service":{"name":"test","agent":{"name":"test","version":"1.0"}}}}` + "\n" +
+			`{"transaction":{"id":"aa00000000000001","trace_id":"aa00000000000001aa00000000000001","name":"tx","type":"request","duration":1,"timestamp":1000000,"outcome":"success","sampled":true,"span_count":{"started":0}}}` + "\n",
+	)
+
+	doRequest := func() {
+		req, err := http.NewRequest(http.MethodPost, "http://"+testEndpoint+intakeV2EventsPath, bytes.NewReader(body))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/x-ndjson")
+		resp, err := httpClient.Do(req)
+		require.NoError(t, err)
+		// Body must be fully drained for the transport to return the connection to the pool.
+		_, _ = io.ReadAll(resp.Body)
+		_ = resp.Body.Close()
+	}
+
+	doRequest() // opens the connection
+	doRequest() // must reuse it; Connection:close would force a second dial
+	assert.Equal(t, int32(1), dialCount.Load(), "two requests must share one connection")
+}
 
 func TestLoadConfig(t *testing.T) {
 	t.Parallel()
 
 	expectedDefaultConfig := func() *Config {
+		serverConfig := confighttp.NewDefaultServerConfig()
+		serverConfig.NetAddr = confignet.AddrConfig{
+			Endpoint:  defaultEndpoint,
+			Transport: confignet.TransportTypeTCP,
+		}
 		return &Config{
-			ServerConfig: confighttp.ServerConfig{
-				NetAddr: confignet.AddrConfig{
-					Endpoint:  defaultEndpoint,
-					Transport: confignet.TransportTypeTCP,
-				},
-			},
-			BatchSize:             defaultBatchSize,
+			ServerConfig:          serverConfig,
+			BatchBytes:            defaultBatchBytes,
+			BatchFlushInterval:    defaultBatchFlushInterval,
 			MaxConcurrentDecoders: int(defaultMaxConcurrentDecoders),
 			MaxEventSize:          defaultMaxEventSize,
 			AgentConfig: AgentConfig{
@@ -52,7 +105,7 @@ func TestLoadConfig(t *testing.T) {
 				CacheDuration: 30 * time.Second,
 				Elasticsearch: func() configelasticsearch.ClientConfig {
 					esCfg := configelasticsearch.NewDefaultClientConfig()
-					esCfg.Endpoint = defaultESEndpoint
+					esCfg.ClientConfig.Endpoint = defaultESEndpoint
 					return esCfg
 				}(),
 			},
@@ -70,10 +123,26 @@ func TestLoadConfig(t *testing.T) {
 			expected: expectedDefaultConfig(),
 		},
 		{
-			id: component.NewIDWithName(metadata.Type, "custom_batch_size"),
+			id: component.NewIDWithName(metadata.Type, "custom_batch_bytes"),
 			expected: func() *Config {
 				cfg := expectedDefaultConfig()
-				cfg.BatchSize = 25
+				cfg.BatchBytes = 4096
+				return cfg
+			}(),
+		},
+		{
+			id: component.NewIDWithName(metadata.Type, "custom_batch_flush_interval"),
+			expected: func() *Config {
+				cfg := expectedDefaultConfig()
+				cfg.BatchFlushInterval = 100 * time.Millisecond
+				return cfg
+			}(),
+		},
+		{
+			id: component.NewIDWithName(metadata.Type, "disabled_batch_flush_interval"),
+			expected: func() *Config {
+				cfg := expectedDefaultConfig()
+				cfg.BatchFlushInterval = 0
 				return cfg
 			}(),
 		},
@@ -102,8 +171,12 @@ func TestLoadConfig(t *testing.T) {
 			}(),
 		},
 		{
-			id:                   component.NewIDWithName(metadata.Type, "invalid_batch_size"),
-			validateErrorMessage: "batch_size must be positive",
+			id:                   component.NewIDWithName(metadata.Type, "invalid_batch_bytes"),
+			validateErrorMessage: "batch_bytes must be positive",
+		},
+		{
+			id:                   component.NewIDWithName(metadata.Type, "invalid_batch_flush_interval"),
+			validateErrorMessage: "batch_flush_interval must not be negative",
 		},
 		{
 			id:                   component.NewIDWithName(metadata.Type, "invalid_max_concurrent_decoders"),
@@ -119,7 +192,7 @@ func TestLoadConfig(t *testing.T) {
 				cfg := expectedDefaultConfig()
 				cfg.AgentConfig.Enabled = true
 				cfg.AgentConfig.CacheDuration = 10 * time.Second
-				cfg.AgentConfig.Elasticsearch.Endpoint = "http://localhost:8200"
+				cfg.AgentConfig.Elasticsearch.ClientConfig.Endpoint = "http://localhost:8200"
 				return cfg
 			}(),
 		},
@@ -147,11 +220,11 @@ func TestLoadConfig(t *testing.T) {
 			require.NoError(t, sub.Unmarshal(cfg))
 
 			if tt.validateErrorMessage != "" {
-				assert.ErrorContains(t, xconfmap.Validate(cfg), tt.validateErrorMessage)
+				assert.ErrorContains(t, confmap.Validate(cfg), tt.validateErrorMessage)
 				return
 			}
 
-			assert.NoError(t, xconfmap.Validate(cfg))
+			assert.NoError(t, confmap.Validate(cfg))
 			assert.Equal(t, tt.expected, cfg)
 		})
 	}

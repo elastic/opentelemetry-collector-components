@@ -1,0 +1,112 @@
+resourceLogs:
+  - resource:
+      attributes:
+        - key: deployment.environment.name
+          value:
+            stringValue: production
+        - key: deployment.id
+          value:
+            stringValue: dpl_123
+        - key: vercel.owner.id
+          value:
+            stringValue: team_full
+        - key: vercel.project.id
+          value:
+            stringValue: proj_full
+        - key: vercel.url
+          value:
+            stringValue: example.vercel.app
+    scopeLogs:
+      - scope:
+          name: otelcol/vercel_encoding
+          attributes:
+            - key: encoding.format
+              value:
+                stringValue: vercel.analytics.v2
+            - key: vercel.web_analytics.sdk.version
+              value:
+                stringValue: 1.5.0
+            - key: vercel.web_analytics.sdk.name
+              value:
+                stringValue: '@vercel/analytics'
+            - key: vercel.web_analytics.sdk.version_full
+              value:
+                stringValue: 1.5.0-canary.1
+        logRecords:
+          - timeUnixNano: "1694723400000000000"
+            attributes:
+              - key: device.id
+                value:
+                  stringValue: "999"
+              - key: device.manufacturer
+                value:
+                  stringValue: Apple
+              - key: device.model.name
+                value:
+                  stringValue: MacBook Pro
+              - key: geo.country.iso_code
+                value:
+                  stringValue: US
+              - key: geo.locality.name
+                value:
+                  stringValue: San Francisco
+              - key: geo.region.iso_code
+                value:
+                  stringValue: CA
+              - key: http.route
+                value:
+                  stringValue: /dashboard/[id]
+              - key: url.domain
+                value:
+                  stringValue: example.com
+              - key: url.full
+                value:
+                  stringValue: https://example.com/dashboard?utm_source=newsletter
+              - key: url.path
+                value:
+                  stringValue: /dashboard
+              - key: url.query
+                value:
+                  stringValue: utm_source=newsletter
+              - key: url.scheme
+                value:
+                  stringValue: https
+              - key: user_agent.name
+                value:
+                  stringValue: Chrome
+              - key: user_agent.os.name
+                value:
+                  stringValue: macOS
+              - key: user_agent.os.version
+                value:
+                  stringValue: "13.4"
+              - key: user_agent.version
+                value:
+                  stringValue: "114.0"
+              - key: vercel.analytics.event.data
+                value:
+                  stringValue: '{"button": "signup"}'
+              - key: vercel.analytics.event.name
+                value:
+                  stringValue: button_click
+              - key: vercel.analytics.event.type
+                value:
+                  stringValue: event
+              - key: vercel.analytics.flags
+                value:
+                  stringValue: my-flag
+              - key: vercel.browser.engine.name
+                value:
+                  stringValue: Blink
+              - key: vercel.browser.engine.version
+                value:
+                  stringValue: "114.0"
+              - key: vercel.client.type
+                value:
+                  stringValue: browser
+              - key: vercel.device.type
+                value:
+                  stringValue: desktop
+              - key: vercel.referrer
+                value:
+                  stringValue: https://google.com

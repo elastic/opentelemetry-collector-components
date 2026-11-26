@@ -14,7 +14,7 @@ INTEGRATION_MODS := $(shell $(FIND_INTEGRATION_TEST_MODS) | xargs $(TO_MOD_DIR) 
 
 GROUP ?= all
 FOR_GROUP_TARGET=for-$(GROUP)-target
-GOTOOLCHAIN ?= go1.25.7+auto
+GOTOOLCHAIN ?= go1.27.1+auto
 
 .DEFAULT_GOAL := all
 
@@ -74,8 +74,6 @@ gotidy:
 
 .PHONY: gogenerate
 gogenerate:
-	# This is a workaround for a bug in mdatagen upstream: https://github.com/open-telemetry/opentelemetry-collector/issues/13069
-	@command -v goimports >/dev/null 2>&1 || $(MAKE) -B install-tools
 	@$(MAKE) $(FOR_GROUP_TARGET) TARGET="generate"
 	@$(MAKE) $(FOR_GROUP_TARGET) TARGET="fmt"
 
@@ -93,13 +91,21 @@ remove-toolchain:
 
 # Build a collector based on the Elastic components (generate Elastic collector)
 .PHONY: genelasticcol
-genelasticcol: $(BUILDER)
+genelasticcol:
 	GOTOOLCHAIN=${GOTOOLCHAIN} GOOS=${TARGET_GOOS} GOARCH=${TARGET_GOARCH} $(BUILDER) --config ./distributions/elastic-components/manifest.yaml
+
+.PHONY: genotelsoak
+genotelsoak:
+	GOTOOLCHAIN=${GOTOOLCHAIN} GOOS=${TARGET_GOOS} GOARCH=${TARGET_GOARCH} $(BUILDER) --config ./distributions/otelsoak/manifest.yaml
 
 # Validate that the Elastic components collector can run with the example configuration.
 .PHONY: elasticcol-validate
 elasticcol-validate: genelasticcol
 	./_build/elastic-collector-components validate --config ./distributions/elastic-components/config.yaml
+
+.PHONY: otelsoak-image-validate
+otelsoak-image-validate: genotelsoak
+	ELASTIC_APM_SERVER_URL=http://localhost:8200 ELASTIC_APM_API_KEY=foobar ./_build/otelsoak validate --config ./distributions/otelsoak/config.yaml
 
 .PHONY: builddocker
 builddocker:
@@ -117,15 +123,36 @@ builddocker:
 	fi; \
 	docker build -t $$IMAGE_NAME -f distributions/elastic-components/Dockerfile .
 
+.PHONY: buildotelsoakdocker
+buildotelsoakdocker:
+	@if [ -z "$(TAG)" ]; then \
+		echo "TAG is not set. Please provide a tag using 'make buildotelsoakdocker TAG=<tag>'"; \
+		exit 1; \
+	fi
+	TARGET_GOOS=linux CGO_ENABLED=0 $(MAKE) genotelsoak
+	@if [ -n "$(USERNAME)" ]; then \
+		IMAGE_NAME=$(USERNAME)/otelsoak:$(TAG); \
+	else \
+		IMAGE_NAME=otelsoak:$(TAG); \
+	fi; \
+	docker build -t $$IMAGE_NAME -f distributions/otelsoak/Dockerfile .
+
 # Validate that the Elastic components collector can run with the example otelsoak configuration.
 .PHONY: otelsoak-validate
 otelsoak-validate: genelasticcol
 	ELASTIC_APM_SERVER_URL=http://localhost:8200 ELASTIC_APM_API_KEY=foobar ./loadgen/cmd/otelsoak/otelsoak validate --config ./loadgen/cmd/otelsoak/config.example.yaml
+	ELASTIC_SERVER_URL=http://localhost:8200 ELASTIC_APM_API_KEY=foobar ./loadgen/cmd/otelsoak/otelsoak validate --config ./loadgen/cmd/otelsoak/config.vercel.example.yaml
 
 # Run otelsoak
 .PHONY: otelsoak-run
 otelsoak-run: genelasticcol
 	./loadgen/cmd/otelsoak/otelsoak --config ./loadgen/cmd/otelsoak/config.example.yaml $(ARGS)
+
+# Run otelsoak against a Vercel Managed Inputs drain endpoint (HTTP NDJSON via httpexporter).
+# Optional: VERCEL_SIGNAL=logs|speed_insights|both (default logs).
+.PHONY: otelsoak-run-vercel
+otelsoak-run-vercel: genelasticcol
+	./loadgen/cmd/otelsoak/otelsoak --config ./loadgen/cmd/otelsoak/config.vercel.example.yaml $(ARGS)
 
 
 # Clones the upstream opentelemetry-collector repository in a temporal .release
@@ -149,7 +176,7 @@ sync-upstream-release-repo: $(RELEASE_REPO_DIR)
 	git clean -fd
 
 .PHONY: update-otel
-update-otel: $(MULTIMOD) sync-upstream-release-repo
+update-otel: sync-upstream-release-repo
 	$(MULTIMOD) sync -s=true -o $(RELEASE_REPO_DIR) -m stable --commit-hash "$(OTEL_STABLE_VERSION)"
 	git add . && git commit -s -m "[chore] multimod update stable modules" ; \
 	$(MULTIMOD) sync -s=true -o $(RELEASE_REPO_DIR) -m beta --commit-hash "$(OTEL_VERSION)"
@@ -167,7 +194,7 @@ COMMIT?=HEAD
 MODSET?=edot-base
 REMOTE?=git@github.com:elastic/opentelemetry-collector-components.git
 .PHONY: push-tags
-push-tags: $(MULTIMOD) versionscheck
+push-tags: versionscheck
 	$(MULTIMOD) verify
 	set -e; for tag in `$(MULTIMOD) tag -m ${MODSET} -c ${COMMIT} --print-tags | grep -v "Using" `; do \
 		echo "pushing tag $${tag}"; \

@@ -280,8 +280,8 @@ func buildPipeline(t *testing.T, dataRecvAddr string) string {
 	// prwexporter
 	expFactory := prwexporter.NewFactory()
 	expCfg := expFactory.CreateDefaultConfig().(*prwexporter.Config)
-	expCfg.ClientConfig = confighttp.NewDefaultClientConfig()
-	expCfg.ClientConfig.Endpoint = "http://" + dataRecvAddr + "/api/v1/write"
+	expCfg.HTTP = confighttp.NewDefaultClientConfig()
+	expCfg.HTTP.Endpoint = "http://" + dataRecvAddr + "/api/v1/write"
 	expCfg.TranslationStrategy = "NoTranslation"
 	expCfg.RemoteWriteProtoMsg = remoteapi.WriteV1MessageType
 

@@ -19,6 +19,8 @@ package lsmintervalprocessor // import "github.com/elastic/opentelemetry-collect
 
 import (
 	"context"
+	"encoding/binary"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"sort"
@@ -45,28 +47,6 @@ import (
 var _ processor.Metrics = (*Processor)(nil)
 
 const (
-	// pebbleMemTableSize defines the max steady state size of a memtable.
-	// There can be more than 1 memtable in memory at a time as it takes
-	// time for old memtable to flush. The memtable size also defines
-	// the size for large batches. A large batch is a batch which will
-	// take atleast half of the memtable size. Note that the Batch#Len
-	// is not the same as the memtable size that the batch will occupy
-	// as data in batches are encoded differently. In general, the
-	// memtable size of the batch will be higher than the length of the
-	// batch data.
-	//
-	// On commit, data in the large batch maybe kept by pebble and thus
-	// large batches will need to be reallocated. Note that large batch
-	// classification uses the memtable size that a batch will occupy
-	// rather than the length of data slice backing the batch.
-	pebbleMemTableSize = 32 << 20 // 32MB
-
-	// pebbleMemTableStopWritesThreshold is the hard limit on the maximum
-	// number of memtables that could be queued before which writes are
-	// stopped. This value should be at least 2 or writes will stop whenever
-	// a MemTable is being flushed.
-	pebbleMemTableStopWritesThreshold = 2
-
 	// dbCommitThresholdBytes is a soft limit and the batch is committed
 	// to the DB as soon as it crosses this threshold. To make sure that
 	// the commit threshold plays well with the max retained batch size
@@ -113,25 +93,37 @@ func newProcessor(
 		return nil, fmt.Errorf("failed to create telemetry builder: %w", err)
 	}
 
+	maxConcurrentCompactions := cfg.Storage.MaxConcurrentCompactions
 	dbOpts := &pebble.Options{
-		Merger: &pebble.Merger{
-			Name: "pmetrics_merger",
-			Merge: func(key, value []byte) (pebble.ValueMerger, error) {
-				v := merger.NewValue(
-					cfg.ResourceLimit,
-					cfg.ScopeLimit,
-					cfg.MetricLimit,
-					cfg.DatapointLimit,
-					cfg.ExponentialHistogramMaxBuckets,
-				)
-				if err := v.Unmarshal(value); err != nil {
-					return nil, fmt.Errorf("failed to unmarshal value from db: %w", err)
-				}
-				return merger.New(v), nil
-			},
-		},
-		MemTableSize:                pebbleMemTableSize,
-		MemTableStopWritesThreshold: pebbleMemTableStopWritesThreshold,
+		Merger: merger.NewPebbleMerger(
+			cfg.ResourceLimit,
+			cfg.ScopeLimit,
+			cfg.MetricLimit,
+			cfg.DatapointLimit,
+			cfg.ExponentialHistogramMaxBuckets,
+		),
+		// MemTableSize defines the max steady state size of a memtable.
+		// There can be more than 1 memtable in memory at a time as it
+		// takes time for old memtable to flush. The memtable size also
+		// defines the size for large batches. A large batch is a batch
+		// which will take atleast half of the memtable size. Note that
+		// the Batch#Len is not the same as the memtable size that the
+		// batch will occupy as data in batches are encoded differently.
+		// In general, the memtable size of the batch will be higher than
+		// the length of the batch data.
+		//
+		// On commit, data in the large batch maybe kept by pebble and
+		// thus large batches will need to be reallocated. Note that large
+		// batch classification uses the memtable size that a batch will
+		// occupy rather than the length of data slice backing the batch.
+		MemTableSize: uint64(cfg.Storage.MemTableSize),
+		// MemTableStopWritesThreshold is the hard limit on the maximum
+		// number of memtables that could be queued before which writes
+		// are stopped. This value should be at least 2 or writes will
+		// stop whenever a MemTable is being flushed.
+		MemTableStopWritesThreshold: cfg.Storage.MemTableStopWritesThreshold,
+		MaxConcurrentCompactions:    func() int { return maxConcurrentCompactions },
+		EventListener:               newWriteStallListener(telemetryBuilder),
 	}
 	writeOpts := pebble.Sync
 	dataDir := cfg.Directory
@@ -397,9 +389,11 @@ func (p *Processor) mergeToBatch(mb *mergeBuffer, clientMetadata []merger.KeyVal
 	}
 
 	for _, ivl := range p.intervals {
+		// Truncate so that each interval window maps to one key, which
+		// exportForInterval reads as [end-ivl, end).
 		key := merger.Key{
 			Interval:       ivl.Duration,
-			ProcessingTime: p.processingTime,
+			ProcessingTime: p.processingTime.Truncate(ivl.Duration),
 			Metadata:       clientMetadata,
 		}
 		var err error
@@ -564,7 +558,7 @@ func (p *Processor) exportForInterval(
 					for k := 0; k < metrics.Len(); k++ {
 						metric := metrics.At(k)
 						executeTransform := func(dp any) {
-							dCtx := ottldatapoint.NewTransformContextPtr(res, scope, metric, dp)
+							dCtx := ottldatapoint.NewTransformContext(res, scope, metric, dp)
 							defer dCtx.Close()
 							if err := ivl.Statements.Execute(exportCtx, dCtx); err != nil {
 								errs = append(errs, fmt.Errorf("failed to execute ottl statement for interval %s: %w", ivl.Duration, err))
@@ -600,6 +594,20 @@ func (p *Processor) exportForInterval(
 							}
 						}
 					}
+				}
+			}
+		}
+		// The hash is added after the statements so that they cannot remove
+		// it: it is what keeps the streams exported from separately
+		// aggregated values apart.
+		if len(key.Metadata) != 0 {
+			hash := hex.EncodeToString(binary.BigEndian.AppendUint64(nil, metadataHash(key.Metadata, "")))
+			for i := 0; i < resourceMetrics.Len(); i++ {
+				v, exists := resourceMetrics.At(i).Resource().Attributes().GetOrPutEmpty(config.MetadataHashAttribute)
+				if exists {
+					v.SetStr(hex.EncodeToString(binary.BigEndian.AppendUint64(nil, metadataHash(key.Metadata, v.AsString()))))
+				} else {
+					v.SetStr(hash)
 				}
 			}
 		}
@@ -649,6 +657,37 @@ func (p *Processor) exportForInterval(
 		return exportedDPCount, errors.Join(errs...)
 	}
 	return exportedDPCount, nil
+}
+
+// newWriteStallListener returns a pebble event listener that records write
+// stalls as metrics. Pebble does not log write stalls unless a listener is
+// installed, so without this they are invisible.
+func newWriteStallListener(tb *metadata.TelemetryBuilder) *pebble.EventListener {
+	// Pebble calls WriteStallBegin and WriteStallEnd from makeRoomForWrite,
+	// which runs with its commit pipeline mutex held for the whole stall. A
+	// stall's begin and end therefore run on one goroutine and never overlap
+	// with another stall, so these variables need no lock. This is how Pebble
+	// v1.1.5 behaves, not a documented guarantee of EventListener. The end
+	// callback does not carry the reason, so it is remembered from the begin.
+	var (
+		reason  string
+		started time.Time
+	)
+	return &pebble.EventListener{
+		WriteStallBegin: func(info pebble.WriteStallBeginInfo) {
+			reason, started = info.Reason, time.Now()
+			tb.LsmintervalPebbleWriteStalls.Add(
+				context.Background(), 1,
+				metric.WithAttributes(attribute.String("reason", info.Reason)),
+			)
+		},
+		WriteStallEnd: func() {
+			tb.LsmintervalPebbleWriteStallDuration.Add(
+				context.Background(), time.Since(started).Seconds(),
+				metric.WithAttributes(attribute.String("reason", reason)),
+			)
+		},
+	}
 }
 
 func (p *Processor) registerPebbleMetrics() error {

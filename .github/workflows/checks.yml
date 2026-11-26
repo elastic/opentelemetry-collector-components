@@ -18,15 +18,15 @@ jobs:
     timeout-minutes: 30
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-go@v6
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
         with:
-          go-version: stable
+          go-version-file: .go-version
           cache: false
       - name: Cache Go
         id: go-cache
         timeout-minutes: 5
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: |
             ~/go/bin
@@ -50,15 +50,15 @@ jobs:
     runs-on: ubuntu-latest
     needs: [setup-environment]
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-go@v6
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
         with:
-          go-version: stable
+          go-version-file: .go-version
           cache: false
       - name: Cache Go
         id: go-cache
         timeout-minutes: 5
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: |
             ~/go/bin
@@ -71,7 +71,7 @@ jobs:
         if: steps.go-cache.outputs.cache-hit != 'true'
         run: make install-tools
       - name: Cache Lint Build
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: ~/.cache/go-build
           key: go-lint-build-${{ matrix.group }}-${{ runner.os }}-${{ hashFiles('**/go.sum') }}
@@ -103,16 +103,16 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout Repo
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Setup Go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@v7
         with:
-          go-version: '1.26.4'
+          go-version-file: .go-version
           cache: false
       - name: Cache Go
         id: go-cache
         timeout-minutes: 5
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: |
             ~/go/bin
@@ -127,15 +127,15 @@ jobs:
     runs-on: ubuntu-latest
     needs: [setup-environment]
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-go@v6
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
         with:
-          go-version: stable
+          go-version-file: .go-version
           cache: false
       - name: Cache Go
         id: go-cache
         timeout-minutes: 5
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: |
             ~/go/bin
@@ -169,22 +169,21 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        go-version: [stable]
         runner: [ubuntu-latest]
         group:
           - all
     runs-on: ${{ matrix.runner }}
     needs: [setup-environment]
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-go@v6
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
         with:
-          go-version: ${{ matrix.go-version }}
+          go-version-file: .go-version
           cache: false
       - name: Cache Go
         id: go-cache
         timeout-minutes: 5
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: |
             ~/go/bin
@@ -197,12 +196,11 @@ jobs:
         if: steps.go-cache.outputs.cache-hit != 'true'
         run: make install-tools
       - name: Cache Test Build
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: ~/.cache/go-build
-          key: go-test-build-${{ runner.os }}-${{ matrix.go-version }}-${{ matrix.runner }}-${{ hashFiles('**/go.sum') }}
+          key: go-test-build-${{ runner.os }}-${{ hashFiles('.go-version') }}-${{ matrix.runner }}-${{ hashFiles('**/go.sum') }}
       - name: Run Unit Tests
-        if: startsWith( matrix.go-version, '1.23' ) != true
         run: make gotest GROUP=${{ matrix.group }}
   unittest:
     if: always()
@@ -224,7 +222,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [setup-environment]
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Build testing component's collector and validate example configuration
         run: make elasticcol-validate
       - name: Validate otelsoak example config
@@ -239,20 +237,19 @@ jobs:
     runs-on: ubuntu-latest
     needs: [setup-environment]
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-go@v6
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
         with:
-          go-version: stable
+          go-version-file: .go-version
           cache: false
       - name: Cache Go
         id: go-cache
         timeout-minutes: 5
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: |
             ~/go/bin
             ~/go/pkg/mod
-            ./.tools
           key: go-cache-${{ runner.os }}-${{ hashFiles('**/go.sum') }}
       - name: Run Integration Tests
         run: make gointegration-test GROUP=${{ matrix.group }}

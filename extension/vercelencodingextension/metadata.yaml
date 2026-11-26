@@ -1,0 +1,7 @@
+type: vercel_encoding
+scope_name: otelcol/vercel_encoding
+
+status:
+  class: extension
+  stability:
+    development: [extension]

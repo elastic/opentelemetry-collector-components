@@ -294,6 +294,38 @@ func AssertEqualLsmintervalPebbleTotalMemtableSize(t *testing.T, tt *componentte
 	metricdatatest.AssertEqual(t, want, got, opts...)
 }
 
+func AssertEqualLsmintervalPebbleWriteStallDuration(t *testing.T, tt *componenttest.Telemetry, dps []metricdata.DataPoint[float64], opts ...metricdatatest.Option) {
+	want := metricdata.Metrics{
+		Name:        "otelcol_lsminterval.pebble_write_stall_duration",
+		Description: "The total time in seconds that pebble stalled writes. [Development]",
+		Unit:        "s",
+		Data: metricdata.Sum[float64]{
+			Temporality: metricdata.CumulativeTemporality,
+			IsMonotonic: true,
+			DataPoints:  dps,
+		},
+	}
+	got, err := tt.GetMetric("otelcol_lsminterval.pebble_write_stall_duration")
+	require.NoError(t, err)
+	metricdatatest.AssertEqual(t, want, got, opts...)
+}
+
+func AssertEqualLsmintervalPebbleWriteStalls(t *testing.T, tt *componenttest.Telemetry, dps []metricdata.DataPoint[int64], opts ...metricdatatest.Option) {
+	want := metricdata.Metrics{
+		Name:        "otelcol_lsminterval.pebble_write_stalls",
+		Description: "The number of times pebble stalled writes, for example because it reached the memtable count limit. [Development]",
+		Unit:        "1",
+		Data: metricdata.Sum[int64]{
+			Temporality: metricdata.CumulativeTemporality,
+			IsMonotonic: true,
+			DataPoints:  dps,
+		},
+	}
+	got, err := tt.GetMetric("otelcol_lsminterval.pebble_write_stalls")
+	require.NoError(t, err)
+	metricdatatest.AssertEqual(t, want, got, opts...)
+}
+
 func AssertEqualLsmintervalProcessedBytes(t *testing.T, tt *componenttest.Telemetry, dps []metricdata.DataPoint[int64], opts ...metricdatatest.Option) {
 	want := metricdata.Metrics{
 		Name:        "otelcol_lsminterval.processed_bytes",

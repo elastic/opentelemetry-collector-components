@@ -231,9 +231,9 @@ func (config *Config) Validate() error {
 	if err := config.RateLimitSettings.Validate(); err != nil {
 		errs = append(errs, err)
 	}
-	for key, override := range config.Overrides {
+	for i, override := range config.Overrides {
 		if err := override.Validate(); err != nil {
-			errs = append(errs, fmt.Errorf("override %q: %w", key, err))
+			errs = append(errs, fmt.Errorf("override %d: %w", i, err))
 		}
 	}
 	return errors.Join(errs...)

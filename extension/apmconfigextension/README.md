@@ -262,20 +262,24 @@ message](https://github.com/open-telemetry/opamp-spec/blob/main/specification.md
 
 An OpAMP client **must** set the attributes (`service.name` and optionally `deployment.environment.name`) on the
 [AgentDescription.identifying_attributes](https://github.com/open-telemetry/opamp-spec/blob/main/specification.md#agentdescriptionidentifying_attributes)
+or
+[AgentDescription.non_identifying_attributes](https://github.com/open-telemetry/opamp-spec/blob/main/specification.md#agentdescriptionnon_identifying_attributes)
 field during the first send
 [AgentToServer](https://github.com/open-telemetry/opamp-spec/blob/main/specification.md#agenttoserver-message)
-message. As the `AgentDescription` should not be sent if not changed, the
-extension will maintain an internal mapping between the `Agent.instance_uid` and
-its service identifying attributes.
+message. The extension reads both attribute lists; if the same key is present
+in both, the value from `identifying_attributes` takes precedence. As the
+`AgentDescription` should not be sent if not changed, the extension will
+maintain an internal mapping between the `Agent.instance_uid` and its service
+identifying attributes.
 
 The [ServerToAgent.ReportFullState
 flag](https://github.com/open-telemetry/opamp-spec/blob/main/specification.md#servertoagentflags)
 will be set in the following cases:
 
-- The agent did not include the `service.name` identifying attributes during the
-first message.
+- The agent did not include the `service.name` attribute in either the identifying
+or non-identifying attributes during the first message.
 - The OpAMP server was not able to identify the agent (undefined
 `Agent.instance_uid`).
 
-The agent **must** return a message with the corresponding
-`AgentDescription.identifying_attributes`.
+The agent **must** return a message with the corresponding `AgentDescription`
+attributes in either `identifying_attributes` or `non_identifying_attributes`.

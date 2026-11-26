@@ -1,0 +1,143 @@
+resourceLogs:
+  - resource:
+      attributes:
+        - key: vercel.project.id
+          value:
+            stringValue: proj_full
+        - key: deployment.id
+          value:
+            stringValue: dpl_full
+        - key: deployment.environment.name
+          value:
+            stringValue: production
+        - key: vercel.project.name
+          value:
+            stringValue: full-app
+    scopeLogs:
+      - logRecords:
+          - attributes:
+              - key: log.record.uid
+                value:
+                  stringValue: "1573817250283254651097202070"
+              - key: vercel.log.source
+                value:
+                  stringValue: lambda
+              - key: vercel.log.build.id
+                value:
+                  stringValue: bld_full
+              - key: vercel.log.entrypoint
+                value:
+                  stringValue: api/full.js
+              - key: vercel.log.destination
+                value:
+                  stringValue: stdout
+              - key: http.route
+                value:
+                  stringValue: /dynamic/[route].json
+              - key: url.path
+                value:
+                  stringValue: /dynamic/some-value.json
+              - key: url.query
+                value:
+                  stringValue: route=some-value
+              - key: server.address
+                value:
+                  stringValue: top-level-host.vercel.app
+              - key: vercel.log.type
+                value:
+                  stringValue: stderr
+              - key: http.response.status_code
+                value:
+                  intValue: "500"
+              - key: vercel.log.request.id
+                value:
+                  stringValue: req_full
+              - key: vercel.log.branch
+                value:
+                  stringValue: main
+              - key: tls.client.ja3
+                value:
+                  stringValue: ja3-full
+              - key: tls.client.ja4
+                value:
+                  stringValue: ja4-full
+              - key: vercel.log.edge.type
+                value:
+                  stringValue: edge
+              - key: vercel.execution.region
+                value:
+                  stringValue: iad1
+              - key: http.request.method
+                value:
+                  stringValue: POST
+              - key: url.scheme
+                value:
+                  stringValue: https
+              - key: client.address
+                value:
+                  stringValue: 203.0.113.10
+              - key: http.response.body.size
+                value:
+                  intValue: "2048"
+              - key: user_agent.original
+                value:
+                  stringValue: Mozilla/5.0 full, curl/8.0
+              - key: vercel.proxy
+                value:
+                  kvlistValue:
+                    values:
+                      - key: timestamp
+                        value:
+                          intValue: "1694723399000"
+                      - key: host
+                        value:
+                          stringValue: proxy-host.vercel.app
+                      - key: path
+                        value:
+                          stringValue: /dynamic/some-value.json?route=some-value
+                      - key: referer
+                        value:
+                          stringValue: https://referrer.example.com/full
+                      - key: region
+                        value:
+                          stringValue: iad1
+                      - key: status_code
+                        value:
+                          intValue: "502"
+                      - key: cache_id
+                        value:
+                          stringValue: cache_full
+                      - key: path_type
+                        value:
+                          stringValue: function
+                      - key: path_type_variant
+                        value:
+                          stringValue: dynamic
+                      - key: vercel_id
+                        value:
+                          stringValue: iad1::abc123
+                      - key: vercel_cache
+                        value:
+                          stringValue: MISS
+                      - key: lambda_region
+                        value:
+                          stringValue: iad1
+                      - key: waf_action
+                        value:
+                          stringValue: challenge
+                      - key: waf_rule_id
+                        value:
+                          stringValue: waf_rule_full
+            body:
+              stringValue: Full log payload
+            severityNumber: 17
+            severityText: ERROR
+            spanId: bbbbbbbbbbbbbbbb
+            timeUnixNano: "1694723400000000000"
+            traceId: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+        scope:
+          attributes:
+            - key: encoding.format
+              value:
+                stringValue: vercel.logs
+          name: otelcol/vercel_encoding

@@ -86,7 +86,7 @@ func TestRemoteConfig(t *testing.T) {
 			expectedRemoteConfig: &protobufs.AgentRemoteConfig{
 				ConfigHash: []byte("abcd"),
 				Config: &protobufs.AgentConfigMap{
-					ConfigMap: map[string]*protobufs.AgentConfigFile{
+					ConfigMap: map[string]*protobufs.AgentConfigObject{
 						"elastic": {
 							Body:        []byte(`{"test":"aaa"}`),
 							ContentType: "application/json",
@@ -114,7 +114,7 @@ func TestRemoteConfig(t *testing.T) {
 			expectedRemoteConfig: &protobufs.AgentRemoteConfig{
 				ConfigHash: []byte("-"),
 				Config: &protobufs.AgentConfigMap{
-					ConfigMap: map[string]*protobufs.AgentConfigFile{
+					ConfigMap: map[string]*protobufs.AgentConfigObject{
 						"elastic": {
 							Body:        []byte(`{}`),
 							ContentType: "application/json",

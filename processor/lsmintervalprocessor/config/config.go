@@ -27,6 +27,11 @@ import (
 
 var _ component.Config = (*Config)(nil)
 
+// MetadataHashAttribute is the resource attribute that carries the hash of
+// the client metadata that the exported metrics were aggregated for. It is
+// only added when at least one of the configured metadata keys is present.
+const MetadataHashAttribute = "lsminterval.metadata.hash"
+
 const (
 	// Based on the defaults suggested in https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/metrics/sdk.md#base2-exponential-bucket-histogram-aggregation
 	defaultMaxExponentialHistogramBuckets = 160
@@ -56,6 +61,11 @@ type Config struct {
 	// Only the listed metadata keys will be propagated to the
 	// resulting metrics.
 	//
+	// Every distinct combination of values is aggregated separately. A
+	// key may split the data of one metric stream over several aggregated
+	// values, so the hash of the keys and values is added to the exported
+	// resources as MetadataHashAttribute to keep one writer per stream.
+	//
 	// Entries are case-insensitive. Duplicated entries will
 	// trigger a validation error.
 	MetadataKeys []string `mapstructure:"metadata_keys"`
@@ -72,6 +82,87 @@ type Config struct {
 	// precisions ranging in, say, minutes and milliseconds are merged
 	// together. Defaults to 160.
 	ExponentialHistogramMaxBuckets int `mapstructure:"exponential_histogram_max_buckets"`
+
+	// Storage holds tuning options for the embedded Pebble database.
+	// CreateDefaultConfig fills in the defaults.
+	Storage StorageConfig `mapstructure:"storage"`
+}
+
+const (
+	// DefaultMemTableSize is the default size of a Pebble memtable.
+	DefaultMemTableSize int64 = 32 << 20 // 32MiB
+	// DefaultMemTableStopWritesThreshold is the default number of
+	// memtables at which writes are stopped until a flush completes.
+	DefaultMemTableStopWritesThreshold = 2
+	// DefaultMaxConcurrentCompactions is the default number of
+	// compactions Pebble runs concurrently.
+	DefaultMaxConcurrentCompactions = 1
+
+	// minMemTableSize is twice the processor's batch commit threshold
+	// (8MiB) so that regular batch commits are never classified as
+	// large batches by Pebble.
+	minMemTableSize int64 = 16 << 20
+	// maxMemTableSize is the upper bound enforced by Pebble.
+	maxMemTableSize int64 = 4<<30 - 1
+)
+
+// StorageConfig tunes the embedded Pebble database. The defaults are
+// those returned by DefaultStorageConfig.
+type StorageConfig struct {
+	// MemTableSize is the size in bytes of each Pebble memtable. Larger
+	// memtables combine more merge operands for the same key in a single
+	// flush, which reduces flush CPU and write stalls under sustained
+	// load at the cost of memory. Must be at least 16MiB and less than
+	// 4GiB. Defaults to 32MiB.
+	MemTableSize int64 `mapstructure:"memtable_size"`
+
+	// MemTableStopWritesThreshold is the number of memtables (the active
+	// memtable plus those queued for flushing) at which writes stop until
+	// a flush completes. Raising it absorbs flush latency instead of
+	// stalling ingestion. Peak memtable memory is approximately
+	// MemTableSize * MemTableStopWritesThreshold. Must be at least 2.
+	// Defaults to 2.
+	MemTableStopWritesThreshold int `mapstructure:"memtable_stop_writes_threshold"`
+
+	// MaxConcurrentCompactions is the maximum number of compactions
+	// Pebble runs concurrently. Compactions merge the operands of a key
+	// across on-disk files; running more of them in parallel uses more
+	// CPU and lets the database keep up with higher write rates when
+	// compaction, rather than flushing, is the bottleneck. Must be at
+	// least 1. Defaults to 1.
+	MaxConcurrentCompactions int `mapstructure:"max_concurrent_compactions"`
+}
+
+// DefaultStorageConfig returns the default storage configuration.
+func DefaultStorageConfig() StorageConfig {
+	return StorageConfig{
+		MemTableSize:                DefaultMemTableSize,
+		MemTableStopWritesThreshold: DefaultMemTableStopWritesThreshold,
+		MaxConcurrentCompactions:    DefaultMaxConcurrentCompactions,
+	}
+}
+
+// Validate validates the storage configuration.
+func (c StorageConfig) Validate() error {
+	if c.MemTableSize < minMemTableSize || c.MemTableSize > maxMemTableSize {
+		return fmt.Errorf(
+			"invalid value for storage::memtable_size, must be between %d and %d bytes, current: %d",
+			minMemTableSize, maxMemTableSize, c.MemTableSize,
+		)
+	}
+	if c.MemTableStopWritesThreshold < 2 {
+		return fmt.Errorf(
+			"invalid value for storage::memtable_stop_writes_threshold, must be at least 2, current: %d",
+			c.MemTableStopWritesThreshold,
+		)
+	}
+	if c.MaxConcurrentCompactions < 1 {
+		return fmt.Errorf(
+			"invalid value for storage::max_concurrent_compactions, must be at least 1, current: %d",
+			c.MaxConcurrentCompactions,
+		)
+	}
+	return nil
 }
 
 // PassThrough determines whether metrics should be passed through as they
@@ -138,7 +229,7 @@ func (cfg *Config) Validate() error {
 			cfg.ExponentialHistogramMaxBuckets,
 		)
 	}
-	return nil
+	return cfg.Storage.Validate()
 }
 
 func CreateDefaultConfig() component.Config {
@@ -147,5 +238,6 @@ func CreateDefaultConfig() component.Config {
 			{Duration: 60 * time.Second},
 		},
 		ExponentialHistogramMaxBuckets: defaultMaxExponentialHistogramBuckets,
+		Storage:                        DefaultStorageConfig(),
 	}
 }

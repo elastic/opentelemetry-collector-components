@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"strings"
 
-	"go.opentelemetry.io/collector/confmap/xconfmap"
+	"go.opentelemetry.io/collector/confmap"
 
 	"github.com/elastic/opentelemetry-collector-components/pkg/integrations"
 )
@@ -32,7 +32,7 @@ type Config struct {
 	Integrations map[string]string `mapstructure:"integrations"`
 }
 
-var _ xconfmap.Validator = &Config{}
+var _ confmap.Validator = &Config{}
 
 // Validate checks that the embedded integrations are syntactically valid.
 func (c *Config) Validate() error {

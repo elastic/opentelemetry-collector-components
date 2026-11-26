@@ -57,12 +57,14 @@ func TestADReceiverLifecycle(t *testing.T) {
 
 	// Phase 1: first sync discovers all entities.
 	sink1 := &consumertest.LogsSink{}
-	rcvr1 := newReceiver(nopSettings(), adIntegConfig(provName, ldapURL), sink1)
+	set1, observed1 := observedSettings(t)
+	rcvr1 := newReceiver(set1, adIntegConfig(provName, ldapURL), sink1)
 	err := rcvr1.Start(t.Context(), testHost(provName, store))
 	if err != nil {
 		t.Fatalf("receiver start failed: %v", err)
 	}
 	waitForLogs(t, sink1, 3, 10*time.Second)
+	waitForSyncComplete(t, observed1, 1, 10*time.Second)
 	err = rcvr1.Shutdown(t.Context())
 	if err != nil {
 		t.Fatalf("receiver shutdown failed: %v", err)
@@ -105,12 +107,14 @@ func TestADReceiverStatePersistence(t *testing.T) {
 
 	// Phase 1: discover alice.
 	sink1 := &consumertest.LogsSink{}
-	rcvr1 := newReceiver(nopSettings(), adIntegConfig(provName, ldapURL), sink1)
+	set1, observed1 := observedSettings(t)
+	rcvr1 := newReceiver(set1, adIntegConfig(provName, ldapURL), sink1)
 	err := rcvr1.Start(t.Context(), testHost(provName, store))
 	if err != nil {
 		t.Fatalf("first receiver start failed: %v", err)
 	}
 	waitForLogs(t, sink1, 1, 10*time.Second)
+	waitForSyncComplete(t, observed1, 1, 10*time.Second)
 	err = rcvr1.Shutdown(t.Context())
 	if err != nil {
 		t.Fatalf("first receiver shutdown failed: %v", err)

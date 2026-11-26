@@ -22,8 +22,7 @@ import (
 	"hash"
 
 	"go.opentelemetry.io/collector/pdata/pcommon"
-
-	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatautil"
+	"go.opentelemetry.io/collector/pdata/xpdata/xhash"
 )
 
 // Stream represents the identity of a metric stream.
@@ -51,7 +50,7 @@ func (s Stream) String() string {
 
 // OfStream constructs a Stream identity from a metric identity and a data point.
 func OfStream[DataPoint attrPoint](m Metric, dp DataPoint) Stream {
-	return Stream{metric: m, attrs: pdatautil.MapHash(dp.Attributes())}
+	return Stream{metric: m, attrs: xhash.MapHash(dp.Attributes())}
 }
 
 type attrPoint interface {

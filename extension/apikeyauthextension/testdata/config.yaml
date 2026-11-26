@@ -1,4 +1,15 @@
 apikeyauth: {}
+apikeyauth/custom_header:
+  header: X-Amz-Firehose-Access-Key
+  scheme: ""
+apikeyauth/empty_header:
+  header: ""
+apikeyauth/header_with_space:
+  header: "Foo Bar"
+apikeyauth/header_with_colon:
+  header: "Authorization:"
+apikeyauth/scheme_with_space:
+  scheme: "Api Key"
 apikeyauth/application_privileges:
   application_privileges:
     - application: my_app
@@ -121,3 +132,47 @@ apikeyauth/invalid_client_retry_delay:
   client_retry:
     enabled: true
     retry_delay: 0s
+
+apikeyauth/any_of:
+  any_of:
+    - application_privileges:
+        - application: apm
+          privileges: ["event:write"]
+          resources: ["-"]
+    - application_privileges:
+        - application: streams
+          privileges: [write]
+          dynamic_resources:
+            - metadata: X-Source-Id
+              format: "source:%s"
+  cache:
+    key_metadata: [X-Source-Id]
+
+apikeyauth/any_of_empty_set:
+  any_of:
+    - application_privileges: []
+
+apikeyauth/any_of_missing_resources:
+  any_of:
+    - application_privileges:
+        - application: apm
+          privileges: ["event:write"]
+
+apikeyauth/any_of_missing_privileges:
+  any_of:
+    - application_privileges:
+        - application: apm
+          resources: ["-"]
+
+apikeyauth/any_of_missing_cache_key_metadata:
+  any_of:
+    - application_privileges:
+        - application: streams
+          privileges: [write]
+          dynamic_resources:
+            - metadata: X-Source-Id
+
+apikeyauth/application_privileges_missing_resources:
+  application_privileges:
+    - application: my_app
+      privileges: [write]

@@ -1,0 +1,16 @@
+type: http
+scope_name: github.com/elastic/opentelemetry-collector-components/exporter/httpexporter
+github_project: elastic/opentelemetry-collector-components
+
+status:
+  class: exporter
+  stability:
+    development: [logs]
+  distributions: []
+
+sending_queue:
+  support: default
+
+tests:
+  config:
+    endpoint: http://localhost:8080

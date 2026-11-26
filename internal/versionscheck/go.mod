@@ -1,10 +1,10 @@
 module github.com/elastic/opentelemetry-collector-components/internal/versionscheck
 
-go 1.25.0
+go 1.26.0
 
 require (
 	github.com/google/go-github/v84 v84.0.0
-	golang.org/x/mod v0.14.0
+	golang.org/x/mod v0.43.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 

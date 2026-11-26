@@ -23,7 +23,7 @@ jobs:
     outputs:
       version: ${{ steps.get-new-version.outputs.new_version }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: '0'
 
@@ -53,36 +53,22 @@ jobs:
           permission-contents: write
           permission-pull-requests: write
 
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           token: ${{ steps.get_token.outputs.token }}
 
-      - uses: elastic/oblt-actions/git/setup@b928559c57fbe750e675392285284a691f32a2f1
+      - uses: elastic/oblt-actions/git/setup@37d142a1daa0cac6eaa7bb622a6dfaf1124eea0e
         with:
           github-token: ${{ steps.get_token.outputs.token }}
 
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           go-version-file: internal/tools/go.mod
           cache: 'false'
 
-      - name: Cache go tools
-        id: go-tools-cache
-        uses: actions/cache@v5
-        with:
-          path: ./.tools
-          key: go-tools-${{ runner.os }}-${{ hashFiles('internal/tools/go.sum') }}
-
-      - name: Add .tools to PATH
-        run: echo "$GITHUB_WORKSPACE/.tools" >> $GITHUB_PATH
-
-      # If there is no cache with the go tools,
-      # install them. We need the changelog
-      # tool for this workflow to work.
+      # Ensure chloggen is available for create_pr.sh below.
       - name: Install tools
-        if: steps.go-tools-cache.outputs.cache-hit != 'true'
-        run: |
-          make install-tools
+        run: make install-tools
 
       - name: Update CHANGELOG and open PR.
         shell: bash

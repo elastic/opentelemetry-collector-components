@@ -1,0 +1,63 @@
+resourceLogs:
+  - resource:
+      attributes:
+        - key: vercel.owner.id
+          value:
+            stringValue: team_nLlpyC6REAqxydlFKbrMDlud
+        - key: vercel.project.id
+          value:
+            stringValue: Qmc52npNy86S8VV4Mt8a8dP1LEkRNbgosW3pBCQytkcgf2
+    scopeLogs:
+      - scope:
+          name: otelcol/vercel_encoding
+          attributes:
+            - key: encoding.format
+              value:
+                stringValue: vercel.analytics.v2
+        logRecords:
+          - timeUnixNano: "1694723400000000000"
+            attributes:
+              - key: device.id
+                value:
+                  stringValue: "67890"
+              - key: url.domain
+                value:
+                  stringValue: example.com
+              - key: url.full
+                value:
+                  stringValue: https://example.com/dashboard
+              - key: url.path
+                value:
+                  stringValue: /dashboard
+              - key: url.scheme
+                value:
+                  stringValue: https
+              - key: vercel.analytics.event.type
+                value:
+                  stringValue: pageview
+          - timeUnixNano: "1694723405000000000"
+            attributes:
+              - key: device.id
+                value:
+                  stringValue: "67890"
+              - key: url.domain
+                value:
+                  stringValue: example.com
+              - key: url.full
+                value:
+                  stringValue: https://example.com/signup
+              - key: url.path
+                value:
+                  stringValue: /signup
+              - key: url.scheme
+                value:
+                  stringValue: https
+              - key: vercel.analytics.event.data
+                value:
+                  stringValue: '{"button": "signup"}'
+              - key: vercel.analytics.event.name
+                value:
+                  stringValue: button_click
+              - key: vercel.analytics.event.type
+                value:
+                  stringValue: event

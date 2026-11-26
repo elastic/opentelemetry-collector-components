@@ -18,32 +18,81 @@
 package merger // import "github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor/internal/merger"
 
 import (
+	"fmt"
 	"io"
-	"sync"
+	"slices"
 
 	"github.com/cockroachdb/pebble"
+
+	"github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor/config"
 )
 
 var _ pebble.ValueMerger = (*Merger)(nil)
 
+const pebbleMergerName = "pmetrics_merger"
+
+// NewPebbleMerger returns the Pebble merger used by the processor during
+// compact and memtable combine.
+//
+// Merge clones the first operand and does not unmarshal it. Unmarshal
+// runs when a sibling operand arrives. Finish returns the clone when no
+// sibling arrived. That skips Unmarshal and AppendBinary on a lone MERGE.
+func NewPebbleMerger(
+	resourceLimit, scopeLimit, metricLimit, datapointLimit config.LimitConfig,
+	maxExponentialHistogramBuckets int,
+) *pebble.Merger {
+	return &pebble.Merger{
+		Name: pebbleMergerName,
+		Merge: func(_ []byte, value []byte) (pebble.ValueMerger, error) {
+			// Pebble keeps ownership of value and may reuse it before Finish.
+			return &Merger{
+				raw:                            slices.Clone(value),
+				resourceLimitCfg:               resourceLimit,
+				scopeLimitCfg:                  scopeLimit,
+				metricLimitCfg:                 metricLimit,
+				datapointLimitCfg:              datapointLimit,
+				maxExponentialHistogramBuckets: maxExponentialHistogramBuckets,
+			}, nil
+		},
+	}
+}
+
+// Merger implements pebble.ValueMerger for pmetric values in the LSM.
 type Merger struct {
-	bufferPool sync.Pool
-	current    *Value
+	current *Value
+	// raw is a copy of the first merge operand. Merge sets it.
+	// ensureUnmarshaled clears it. Finish returns it when current is nil.
+	raw []byte
+
+	resourceLimitCfg               config.LimitConfig
+	scopeLimitCfg                  config.LimitConfig
+	metricLimitCfg                 config.LimitConfig
+	datapointLimitCfg              config.LimitConfig
+	maxExponentialHistogramBuckets int
 }
 
-func New(v *Value) *Merger {
-	return &Merger{
-		current: v,
-	}
-}
-
+// MergeNewer implements pebble.ValueMerger.
 func (m *Merger) MergeNewer(value []byte) error {
+	return m.mergeOperand(value)
+}
+
+// MergeOlder implements pebble.ValueMerger.
+func (m *Merger) MergeOlder(value []byte) error {
+	return m.mergeOperand(value)
+}
+
+// mergeOperand unmarshals the first operand if needed, unmarshals value,
+// and merges the two Values.
+func (m *Merger) mergeOperand(value []byte) error {
+	if err := m.ensureUnmarshaled(); err != nil {
+		return err
+	}
 	op := NewValue(
-		m.current.resourceLimitCfg,
-		m.current.scopeLimitCfg,
-		m.current.metricLimitCfg,
-		m.current.datapointLimitCfg,
-		m.current.maxExponentialHistogramBuckets,
+		m.resourceLimitCfg,
+		m.scopeLimitCfg,
+		m.metricLimitCfg,
+		m.datapointLimitCfg,
+		m.maxExponentialHistogramBuckets,
 	)
 	if err := op.Unmarshal(value); err != nil {
 		return err
@@ -51,41 +100,33 @@ func (m *Merger) MergeNewer(value []byte) error {
 	return m.current.Merge(op)
 }
 
-func (m *Merger) MergeOlder(value []byte) error {
-	op := NewValue(
-		m.current.resourceLimitCfg,
-		m.current.scopeLimitCfg,
-		m.current.metricLimitCfg,
-		m.current.datapointLimitCfg,
-		m.current.maxExponentialHistogramBuckets,
-	)
-	if err := op.Unmarshal(value); err != nil {
-		return err
+// ensureUnmarshaled unmarshals raw into current. A second call is a no-op.
+func (m *Merger) ensureUnmarshaled() error {
+	if m.current != nil {
+		return nil
 	}
-	return m.current.Merge(op)
+	v := NewValue(
+		m.resourceLimitCfg,
+		m.scopeLimitCfg,
+		m.metricLimitCfg,
+		m.datapointLimitCfg,
+		m.maxExponentialHistogramBuckets,
+	)
+	if err := v.Unmarshal(m.raw); err != nil {
+		return fmt.Errorf("failed to unmarshal value from db: %w", err)
+	}
+	m.current = v
+	m.raw = nil
+	return nil
 }
 
 func (m *Merger) Finish(includesBase bool) ([]byte, io.Closer, error) {
-	pb, ok := m.bufferPool.Get().(*pooledBuffer)
-	if !ok {
-		pb = &pooledBuffer{pool: &m.bufferPool}
+	if m.current == nil {
+		return m.raw, nil, nil
 	}
-	newBuf, err := m.current.AppendBinary(pb.buf[:0])
+	buf, err := m.current.AppendBinary(nil)
 	if err != nil {
-		m.bufferPool.Put(pb)
 		return nil, nil, err
 	}
-	pb.buf = newBuf
-	return newBuf, pb, nil
-}
-
-type pooledBuffer struct {
-	pool *sync.Pool
-	buf  []byte
-}
-
-func (b *pooledBuffer) Close() error {
-	b.buf = b.buf[:0]
-	b.pool.Put(b)
-	return nil
+	return buf, nil, nil
 }

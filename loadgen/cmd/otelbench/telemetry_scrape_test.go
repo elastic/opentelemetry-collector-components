@@ -158,6 +158,32 @@ func TestMetricsGeneratorConfigFilesSelectsTelemetryPort(t *testing.T) {
 	}, configFiles)
 }
 
+func TestTelemetryPollerFinalScrapeUpdatesLatestSnapshot(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/metrics", r.URL.Path)
+		w.Header().Set("Content-Type", "text/plain; version=0.0.4")
+		_, _ = w.Write([]byte(telemetryFixture))
+	}))
+	defer srv.Close()
+
+	poller := &telemetryPoller{
+		latest: telemetrySnapshot{
+			accepted: 200,
+			at:       time.Now().Add(-time.Second),
+			valid:    true,
+		},
+		firstSeen: time.Now().Add(-time.Second),
+	}
+
+	poller.scrapeNow(context.Background(), srv.URL)
+	snap, firstSeen := poller.snapshot()
+
+	assert.Equal(t, float64(150), snap.sent)
+	assert.Equal(t, float64(3), snap.failed)
+	assert.Equal(t, float64(200), snap.accepted)
+	assert.False(t, firstSeen.IsZero())
+}
+
 func TestMetricsGenSeedConfigFiles(t *testing.T) {
 	assert.Equal(t, []string{
 		"yaml:receivers::metricsgen::seed: 124",
@@ -214,6 +240,30 @@ func TestRunMetricsGenBenchPassesBenchmarkNAsStartNowMinus(t *testing.T) {
 	assert.Equal(t, 5.0, result.Extra["failed_metric_points/s"])
 	assert.Equal(t, 2.0, result.Extra["duration_s"])
 	assert.NotContains(t, result.Extra, "attempted_metric_points")
+}
+
+func TestRunMetricsGenOnceReportsTelemetryWithoutStartNowMinusBN(t *testing.T) {
+	var gotConfigFiles []string
+	result, err := runMetricsGenOnce(
+		context.Background(),
+		[]string{"config-prw.yaml"},
+		func(ctx context.Context, configFiles []string) (metricsGenRunStats, error) {
+			gotConfigFiles = append([]string{}, configFiles...)
+			return metricsGenRunStats{
+				sent:           100,
+				failed:         10,
+				activeDuration: 2 * time.Second,
+			}, nil
+		},
+	)
+	require.NoError(t, err)
+
+	assert.Equal(t, []string{"config-prw.yaml"}, gotConfigFiles)
+	assert.Equal(t, 1, result.N)
+	assert.Equal(t, 2*time.Second, result.T)
+	assert.Equal(t, 50.0, result.Extra["metric_points/s"])
+	assert.Equal(t, 5.0, result.Extra["failed_metric_points/s"])
+	assert.Equal(t, 2.0, result.Extra["duration_s"])
 }
 
 func TestPrintMetricsTelemetryEndpoint(t *testing.T) {

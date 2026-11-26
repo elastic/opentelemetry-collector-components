@@ -11,9 +11,7 @@ resourceLogs:
                   stringValue: test
             body:
               stringValue: this is a log
-            observedTimeUnixNano: "1741200622991237029"
-            spanId: ""
-            traceId: ""
+            observedTimeUnixNano: "1792058838448958000"
           - attributes:
               - key: log.file.name
                 value:
@@ -23,7 +21,7 @@ resourceLogs:
                   stringValue: test
             body:
               stringValue: this is another log
-            observedTimeUnixNano: "1741200622991239294"
-            spanId: ""
-            traceId: ""
-        scope: {}
+            observedTimeUnixNano: "1792058838448962000"
+        scope:
+          name: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/filelogreceiver
+          version: latest

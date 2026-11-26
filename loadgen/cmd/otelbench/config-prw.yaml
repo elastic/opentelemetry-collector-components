@@ -1,9 +1,9 @@
 # Example metricsgen -> Prometheus Remote Write config for otelbench's
-# metricsgen mode. Run with:
-#   ./otelbench -metricsgen -config-prw
+# finite backfill benchmark mode. Run with:
+#   ./otelbench -metricsgen -config ./config-prw.yaml
 receivers:
   metricsgen:
-    start_now_minus: 60m
+    start_now_minus: 10m
     interval: 30s
     real_time: false
     exit_after_end: true
@@ -22,7 +22,8 @@ exporters:
     tls:
       insecure_skip_verify: true
     headers:
-      Authorization: "ApiKey <your-base64-api-key>"
+      # Authorization: "ApiKey <your-base64-api-key>"
+      Authorization: "ApiKey <your-api-key>"
     resource_to_telemetry_conversion:
       enabled: true
     target_info:

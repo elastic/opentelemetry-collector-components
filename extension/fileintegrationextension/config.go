@@ -22,7 +22,7 @@ import (
 	"fmt"
 	"os"
 
-	"go.opentelemetry.io/collector/confmap/xconfmap"
+	"go.opentelemetry.io/collector/confmap"
 )
 
 // Config is the structured configuration of the extension.
@@ -31,7 +31,7 @@ type Config struct {
 	Path string `mapstructure:"path"`
 }
 
-var _ xconfmap.Validator = &Config{}
+var _ confmap.Validator = &Config{}
 
 // Validate validates the configuration, it checks that the path is defined and is the path to a directory.
 func (c *Config) Validate() error {

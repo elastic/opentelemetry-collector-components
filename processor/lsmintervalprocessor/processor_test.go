@@ -26,6 +26,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/cockroachdb/pebble"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/client"
@@ -47,6 +48,7 @@ import (
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest/pmetrictest"
 
 	"github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor/config"
+	"github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor/internal/merger"
 	"github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor/internal/metadata"
 	"github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor/internal/metadatatest"
 )
@@ -209,6 +211,11 @@ func testRunHelper(t *testing.T, name string, config *config.Config) {
 }
 
 func newTestProcessor(t testing.TB, cfg *config.Config, telSettings component.TelemetrySettings, next consumer.Metrics) processor.Metrics {
+	// Tests build configs by hand; fill in the storage defaults that
+	// CreateDefaultConfig would otherwise provide.
+	if cfg.Storage == (config.StorageConfig{}) {
+		cfg.Storage = config.DefaultStorageConfig()
+	}
 	factory := NewFactory()
 	settings := processortest.NewNopSettings(metadata.Type)
 	settings.TelemetrySettings = telSettings
@@ -361,6 +368,195 @@ func TestClientMetadata(t *testing.T) {
 	assert.Equal(t, expected, received)
 }
 
+func TestMetadataHashAttribute(t *testing.T) {
+	cfg := &config.Config{
+		MetadataKeys: []string{"target", "partition"},
+		Intervals:    []config.IntervalConfig{{Duration: time.Minute}},
+		ResourceLimit: config.LimitConfig{
+			MaxCardinality: 1,
+			Overflow: config.OverflowConfig{
+				Attributes: []config.Attribute{{Key: "overflow", Value: "resource"}},
+			},
+		},
+	}
+
+	type export struct {
+		target, hash string
+		sum          int64
+		resources    int
+	}
+	var exported []export
+	next, _ := consumer.NewMetrics(consumer.ConsumeMetricsFunc(
+		func(ctx context.Context, metrics pmetric.Metrics) error {
+			if metrics.MetricCount() == 0 {
+				return nil
+			}
+			e := export{resources: metrics.ResourceMetrics().Len()}
+			if v := client.FromContext(ctx).Metadata.Get("target"); len(v) > 0 {
+				e.target = v[0]
+			}
+			for i := 0; i < metrics.ResourceMetrics().Len(); i++ {
+				rm := metrics.ResourceMetrics().At(i)
+				if v, ok := rm.Resource().Attributes().Get(config.MetadataHashAttribute); ok {
+					if e.hash != "" {
+						require.Equal(t, e.hash, v.Str(), "all resources of a value must carry the same hash")
+					}
+					e.hash = v.Str()
+				} else {
+					require.Empty(t, e.hash, "either all or no resources carry the hash")
+				}
+				m := rm.ScopeMetrics().At(0).Metrics().At(0)
+				e.sum += m.Sum().DataPoints().At(0).IntValue()
+			}
+			exported = append(exported, e)
+			return nil
+		},
+	))
+	settings := processortest.NewNopSettings(metadata.Type)
+	p := newTestProcessor(t, cfg, settings.TelemetrySettings, next)
+	require.NoError(t, p.Start(context.Background(), componenttest.NewNopHost()))
+
+	send := func(md map[string][]string, resourceName string) {
+		ctx := client.NewContext(context.Background(), client.Info{Metadata: client.NewMetadata(md)})
+		metrics := pmetric.NewMetrics()
+		rm := metrics.ResourceMetrics().AppendEmpty()
+		rm.Resource().Attributes().PutStr("name", resourceName)
+		m := rm.ScopeMetrics().AppendEmpty().Metrics().AppendEmpty()
+		m.SetName("metric_name")
+		sum := m.SetEmptySum()
+		sum.SetAggregationTemporality(pmetric.AggregationTemporalityDelta)
+		sum.DataPoints().AppendEmpty().SetIntValue(1)
+		require.NoError(t, p.ConsumeMetrics(ctx, metrics))
+	}
+	// The same stream of one target seen on two partitions, with a repeat
+	// of partition 1 to be merged, then without a partition and without
+	// any metadata.
+	send(map[string][]string{"target": {"t"}, "partition": {"1"}}, "svc")
+	send(map[string][]string{"target": {"t"}, "partition": {"1"}}, "svc")
+	send(map[string][]string{"target": {"t"}, "partition": {"2"}}, "svc")
+	send(map[string][]string{"target": {"t"}}, "svc")
+	send(nil, "svc")
+	// The resource limit is 1: a second resource overflows within its own
+	// value, and the overflow resource must carry the hash too.
+	send(map[string][]string{"target": {"o"}, "partition": {"1"}}, "a")
+	send(map[string][]string{"target": {"o"}, "partition": {"1"}}, "b")
+
+	require.NoError(t, p.Shutdown(context.Background()))
+
+	hashOf := func(target string, partition ...string) string {
+		// In the order of the aggregation key: sorted by metadata key.
+		var md []merger.KeyValues
+		if len(partition) > 0 {
+			md = append(md, merger.KeyValues{Key: "partition", Values: partition})
+		}
+		md = append(md, merger.KeyValues{Key: "target", Values: []string{target}})
+		return fmt.Sprintf("%016x", metadataHash(md, ""))
+	}
+	assert.ElementsMatch(t, []export{
+		{target: "t", hash: hashOf("t", "1"), sum: 2, resources: 1},
+		{target: "t", hash: hashOf("t", "2"), sum: 1, resources: 1},
+		{target: "t", hash: hashOf("t"), sum: 1, resources: 1},
+		// Without any metadata the attribute is not added.
+		{target: "", hash: "", sum: 1, resources: 1},
+		{target: "o", hash: hashOf("o", "1"), sum: 2, resources: 2},
+	}, exported)
+}
+
+// TestMetadataHashAttributeExisting covers resources that already carry the
+// hash attribute: those differing only in it are different streams and must
+// stay different.
+func TestMetadataHashAttributeExisting(t *testing.T) {
+	cfg := &config.Config{
+		MetadataKeys: []string{"k"},
+		Intervals:    []config.IntervalConfig{{Duration: time.Minute}},
+	}
+	var exported []string
+	next, _ := consumer.NewMetrics(consumer.ConsumeMetricsFunc(
+		func(_ context.Context, metrics pmetric.Metrics) error {
+			for i := 0; i < metrics.ResourceMetrics().Len(); i++ {
+				v, _ := metrics.ResourceMetrics().At(i).Resource().Attributes().Get(config.MetadataHashAttribute)
+				exported = append(exported, v.Str())
+			}
+			return nil
+		},
+	))
+	settings := processortest.NewNopSettings(metadata.Type)
+	p := newTestProcessor(t, cfg, settings.TelemetrySettings, next)
+	require.NoError(t, p.Start(context.Background(), componenttest.NewNopHost()))
+
+	ctx := client.NewContext(context.Background(), client.Info{
+		Metadata: client.NewMetadata(map[string][]string{"k": {"v"}}),
+	})
+	for _, existing := range []string{"aaaa", "bbbb"} {
+		metrics := pmetric.NewMetrics()
+		rm := metrics.ResourceMetrics().AppendEmpty()
+		rm.Resource().Attributes().PutStr(config.MetadataHashAttribute, existing)
+		sum := rm.ScopeMetrics().AppendEmpty().Metrics().AppendEmpty().SetEmptySum()
+		sum.SetAggregationTemporality(pmetric.AggregationTemporalityDelta)
+		sum.DataPoints().AppendEmpty().SetIntValue(1)
+		require.NoError(t, p.ConsumeMetrics(ctx, metrics))
+	}
+	require.NoError(t, p.Shutdown(context.Background()))
+
+	md := []merger.KeyValues{{Key: "k", Values: []string{"v"}}}
+	assert.ElementsMatch(t, []string{
+		fmt.Sprintf("%016x", metadataHash(md, "aaaa")),
+		fmt.Sprintf("%016x", metadataHash(md, "bbbb")),
+	}, exported)
+}
+
+func TestStorageOptions(t *testing.T) {
+	for _, tc := range []struct {
+		name                string
+		storage             config.StorageConfig
+		expectedSize        uint64
+		expectedThreshold   int
+		expectedCompactions int
+	}{
+		{
+			name:                "defaults",
+			storage:             config.DefaultStorageConfig(),
+			expectedSize:        uint64(config.DefaultMemTableSize),
+			expectedThreshold:   config.DefaultMemTableStopWritesThreshold,
+			expectedCompactions: config.DefaultMaxConcurrentCompactions,
+		},
+		{
+			name: "configured",
+			storage: config.StorageConfig{
+				MemTableSize:                128 << 20,
+				MemTableStopWritesThreshold: 4,
+				MaxConcurrentCompactions:    2,
+			},
+			expectedSize:        128 << 20,
+			expectedThreshold:   4,
+			expectedCompactions: 2,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			cfg := config.CreateDefaultConfig().(*config.Config)
+			cfg.Directory = t.TempDir()
+			cfg.Storage = tc.storage
+			require.NoError(t, cfg.Validate())
+
+			p, err := NewFactory().CreateMetrics(
+				context.Background(),
+				processortest.NewNopSettings(metadata.Type),
+				cfg,
+				consumertest.NewNop(),
+			)
+			require.NoError(t, err)
+			proc := p.(*Processor)
+			assert.Equal(t, tc.expectedSize, proc.dbOpts.MemTableSize)
+			assert.Equal(t, tc.expectedThreshold, proc.dbOpts.MemTableStopWritesThreshold)
+			assert.Equal(t, tc.expectedCompactions, proc.dbOpts.MaxConcurrentCompactions())
+
+			// The database must open and close cleanly with the options.
+			require.NoError(t, p.Start(context.Background(), componenttest.NewNopHost()))
+			require.NoError(t, p.Shutdown(context.Background()))
+		})
+	}
+}
+
 func TestConcurrentShutdownConsumeMetrics(t *testing.T) {
 	t.Parallel()
 
@@ -416,6 +612,117 @@ func TestConcurrentShutdownConsumeMetrics(t *testing.T) {
 	wg.Wait()
 }
 
+// TestKeyProcessingTimeTruncatedToInterval verifies that each interval
+// stores its data under a key whose processing time is truncated to that
+// interval, so that a window of any interval maps to a single key.
+func TestKeyProcessingTimeTruncatedToInterval(t *testing.T) {
+	t.Parallel()
+
+	intervals := []time.Duration{time.Hour, 2 * time.Hour, 7 * time.Hour}
+	cfg := &config.Config{}
+	for _, ivl := range intervals {
+		cfg.Intervals = append(cfg.Intervals, config.IntervalConfig{Duration: ivl})
+	}
+	p := newTestProcessor(t, cfg, componenttest.NewNopTelemetrySettings(), &consumertest.MetricsSink{}).(*Processor)
+	// Use a fixed processing time far in the future to ensure that the
+	// export tick doesn't interfere with the test.
+	processingTime := time.Date(2100, 1, 1, 13, 0, 0, 0, time.UTC)
+	p.processingTime = processingTime
+	require.NoError(t, p.Start(context.Background(), componenttest.NewNopHost()))
+
+	md := pmetric.NewMetrics()
+	m := md.ResourceMetrics().AppendEmpty().ScopeMetrics().AppendEmpty().Metrics().AppendEmpty()
+	m.SetName("metric_name")
+	sum := m.SetEmptySum()
+	sum.SetAggregationTemporality(pmetric.AggregationTemporalityDelta)
+	sum.DataPoints().AppendEmpty().SetIntValue(1)
+	require.NoError(t, p.ConsumeMetrics(context.Background(), md))
+
+	func() {
+		// Commit the pending batch so that the keys can be read back.
+		p.mu.Lock()
+		defer p.mu.Unlock()
+		require.NotNil(t, p.batch)
+		require.NoError(t, p.batch.Commit(p.wOpts))
+		require.NoError(t, p.batch.Close())
+		p.batch = nil
+	}()
+
+	iter, err := p.db.NewIter(nil)
+	require.NoError(t, err)
+	defer func() { _ = iter.Close() }()
+
+	got := make(map[time.Duration]time.Time)
+	for iter.First(); iter.Valid(); iter.Next() {
+		var key merger.Key
+		require.NoError(t, key.Unmarshal(iter.Key()))
+		got[key.Interval] = key.ProcessingTime.UTC()
+	}
+
+	expected := make(map[time.Duration]time.Time)
+	for _, ivl := range intervals {
+		expected[ivl] = processingTime.Truncate(ivl)
+	}
+	assert.Equal(t, expected, got)
+}
+
+// TestMultiIntervalAggregation verifies that a larger interval exports one
+// merged window instead of re-exporting the windows of the smaller interval,
+// without losing or duplicating any data. The export ticks are driven
+// directly, so the test doesn't depend on timers.
+func TestMultiIntervalAggregation(t *testing.T) {
+	t.Parallel()
+
+	exports := make(map[string][]int64) // by interval
+	next, _ := consumer.NewMetrics(consumer.ConsumeMetricsFunc(
+		func(_ context.Context, metrics pmetric.Metrics) error {
+			if metrics.MetricCount() == 0 {
+				return nil
+			}
+			dp := metrics.ResourceMetrics().At(0).ScopeMetrics().At(0).Metrics().At(0).Sum().DataPoints().At(0)
+			ivl, ok := dp.Attributes().Get("ivl")
+			assert.True(t, ok)
+			exports[ivl.Str()] = append(exports[ivl.Str()], dp.IntValue())
+			return nil
+		},
+	))
+	cfg := &config.Config{Intervals: []config.IntervalConfig{
+		{Duration: time.Minute, Statements: []string{`set(attributes["ivl"], "1m")`}},
+		{Duration: 3 * time.Minute, Statements: []string{`set(attributes["ivl"], "3m")`}},
+	}}
+	p := newTestProcessor(t, cfg, componenttest.NewNopTelemetrySettings(), next).(*Processor)
+	// Open the database without starting the export goroutine, which would
+	// race with the test advancing the processing time, and drive the export
+	// ticks directly instead.
+	p.processingTime = time.Date(2100, 1, 1, 12, 0, 0, 0, time.UTC)
+	db, err := pebble.Open(p.dataDir, p.dbOpts)
+	require.NoError(t, err)
+	p.db = db
+
+	for range 3 {
+		md := pmetric.NewMetrics()
+		m := md.ResourceMetrics().AppendEmpty().ScopeMetrics().AppendEmpty().Metrics().AppendEmpty()
+		m.SetName("metric_name")
+		sum := m.SetEmptySum()
+		sum.SetAggregationTemporality(pmetric.AggregationTemporalityDelta)
+		sum.DataPoints().AppendEmpty().SetIntValue(1)
+		require.NoError(t, p.ConsumeMetrics(context.Background(), md))
+
+		// Same as the export timer: swap the batch, advance the processing
+		// time, then commit and export.
+		p.mu.Lock()
+		batch := p.batch
+		p.batch = nil
+		p.processingTime = p.processingTime.Add(time.Minute)
+		end := p.processingTime
+		p.mu.Unlock()
+		require.NoError(t, p.commitAndExport(context.Background(), batch, end))
+	}
+
+	// 1m exports each minute; 3m exports once, with the whole window merged.
+	assert.Equal(t, map[string][]int64{"1m": {1, 1, 1}, "3m": {3}}, exports)
+}
+
 func BenchmarkAggregation(b *testing.B) {
 	benchmarkAggregation(b, nil)
 }
@@ -446,6 +753,7 @@ func benchmarkAggregation(b *testing.B, ottlStatements []string) {
 
 	for _, tc := range testCases {
 		config := &config.Config{
+			Storage: config.DefaultStorageConfig(),
 			Intervals: []config.IntervalConfig{
 				{
 					Duration:   time.Hour,
@@ -512,4 +820,29 @@ func benchmarkAggregation(b *testing.B, ottlStatements []string) {
 			}
 		})
 	}
+}
+
+func TestWriteStallListener(t *testing.T) {
+	testTel := componenttest.NewTelemetry()
+	tb, err := metadata.NewTelemetryBuilder(testTel.NewTelemetrySettings())
+	require.NoError(t, err)
+
+	l := newWriteStallListener(tb)
+	for range 2 {
+		l.WriteStallBegin(pebble.WriteStallBeginInfo{Reason: "memtable count limit reached"})
+		time.Sleep(5 * time.Millisecond)
+		l.WriteStallEnd()
+	}
+
+	reasonAttr := attribute.NewSet(attribute.String("reason", "memtable count limit reached"))
+	metadatatest.AssertEqualLsmintervalPebbleWriteStalls(t, testTel, []metricdata.DataPoint[int64]{
+		{Value: 2, Attributes: reasonAttr},
+	}, metricdatatest.IgnoreTimestamp())
+
+	m, err := testTel.GetMetric("otelcol_lsminterval.pebble_write_stall_duration")
+	require.NoError(t, err)
+	dps := m.Data.(metricdata.Sum[float64]).DataPoints
+	require.Len(t, dps, 1)
+	assert.Equal(t, reasonAttr, dps[0].Attributes)
+	assert.GreaterOrEqual(t, dps[0].Value, 0.01)
 }

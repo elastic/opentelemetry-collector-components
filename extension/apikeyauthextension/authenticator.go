@@ -29,6 +29,8 @@ import (
 	mathrand "math/rand/v2"
 	"net/http"
 	"runtime"
+	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -52,17 +54,16 @@ import (
 )
 
 const (
-	// authorizationHeader is the name of the header that contains the API Key Authorization.
-	authorizationHeader = "Authorization"
-
-	// lowerAuthorizationHeader is the lowercase version of the authorization header.
-	lowerAuthorizationHeader = "authorization"
+	// elasticsearchAuthHeader and elasticsearchAuthScheme are the header and
+	// scheme used to send the API Key to Elasticsearch, regardless of how the
+	// client sent it to the collector.
+	elasticsearchAuthHeader = "Authorization"
+	elasticsearchAuthScheme = "ApiKey"
 )
 
 var (
-	errAuthorizationHeaderWrongScheme = errors.New("ApiKey prefix not found, expected ApiKey <value>")
-	errAuthorizationHeaderInvalid     = errors.New("invalid API Key")
-	errHasPrivilegesTimeout           = errors.New("has privileges request timed out")
+	errAuthorizationHeaderInvalid = errors.New("invalid API Key")
+	errHasPrivilegesTimeout       = errors.New("has privileges request timed out")
 
 	_ client.AuthData      = (*authData)(nil)
 	_ extensionauth.Server = (*authenticator)(nil)
@@ -70,6 +71,10 @@ var (
 
 // metadataValidationError represents a client error related to metadata validation
 // for dynamic resources. This is used to distinguish client errors from server errors.
+// errNoAlternative is returned when any_of is configured but no entry can be
+// checked, because each one needs client metadata the request does not have.
+var errNoAlternative = errors.New("no any_of privilege set applies to the request")
+
 type metadataValidationError struct {
 	message string
 }
@@ -131,6 +136,11 @@ type authenticator struct {
 	esClient *elasticsearch.TypedClient
 	cache    freelru.Cache[string, *cacheEntry]
 	salt     [16]byte // used for deriving keys from API Keys
+
+	// optionalKeyMetadata holds the cache.key_metadata keys that only any_of
+	// dynamic resources use. A request may omit them: the entries that need
+	// them are not satisfied, and the cache key records the key as absent.
+	optionalKeyMetadata map[string]bool
 }
 
 func newAuthenticator(cfg *Config, set extension.Settings) (*authenticator, error) {
@@ -153,10 +163,11 @@ func newAuthenticator(cfg *Config, set extension.Settings) (*authenticator, erro
 	)
 
 	authenticator := &authenticator{
-		config:            cfg,
-		telemetrySettings: set.TelemetrySettings,
-		userAgent:         userAgent,
-		cache:             cache,
+		config:              cfg,
+		telemetrySettings:   set.TelemetrySettings,
+		userAgent:           userAgent,
+		cache:               cache,
+		optionalKeyMetadata: optionalKeyMetadata(cfg),
 	}
 	if _, err := rand.Read(authenticator.salt[:]); err != nil {
 		return nil, err
@@ -165,13 +176,13 @@ func newAuthenticator(cfg *Config, set extension.Settings) (*authenticator, erro
 }
 
 func (a *authenticator) Start(ctx context.Context, host component.Host) error {
-	httpClient, err := a.config.ToClient(ctx, host.GetExtensions(), a.telemetrySettings)
+	httpClient, err := a.config.ClientConfig.ToClient(ctx, host.GetExtensions(), a.telemetrySettings)
 	if err != nil {
 		return err
 	}
 	esRetry := a.config.effectiveElasticsearchRetry()
 	esClient, err := elasticsearch.NewTypedClient(elasticsearch.Config{
-		Addresses: []string{a.config.Endpoint},
+		Addresses: []string{a.config.ClientConfig.Endpoint},
 		Header: map[string][]string{
 			"User-Agent": {a.userAgent},
 		},
@@ -219,22 +230,30 @@ func (a *authenticator) Shutdown(ctx context.Context) error {
 	return nil
 }
 
-// parseAuthorizationHeader checks that the Authorization header follows the expected format,
-// and returns the full header value, and the API Key ID.
+// parseAuthorizationHeader checks that the configured header follows the expected format,
+// and returns the canonical Authorization header value and the API Key ID.
 func (a *authenticator) parseAuthorizationHeader(headers map[string][]string) (string, string, error) {
-	orig, ok := getHeader(headers, authorizationHeader, lowerAuthorizationHeader)
+	header, scheme := a.config.Header, a.config.Scheme
+	orig, ok := getHeader(headers, header, strings.ToLower(header))
 	if !ok {
-		return "", "", fmt.Errorf("missing header %q, expected %q", authorizationHeader, "ApiKey <value>")
+		return "", "", fmt.Errorf("missing header %q, expected %q", header, strings.TrimSpace(scheme+" <value>"))
 	}
 
-	// The expected format of the Authorization header is:
+	orig = strings.TrimSpace(orig)
+
+	// The expected format of the header is, by default:
 	//
 	//     Authorization: ApiKey base64(ID:APIKey)
 	//
 	// The scheme name is matched case-insensitively per RFC 7235.
-	scheme, encoded, found := strings.Cut(orig, " ")
-	if !found || !strings.EqualFold(scheme, "ApiKey") {
-		return "", "", errAuthorizationHeaderWrongScheme
+	// If no scheme is configured, the header holds base64(ID:APIKey) alone.
+	encoded := orig
+	if scheme != "" {
+		gotScheme, rest, found := strings.Cut(orig, " ")
+		if !found || !strings.EqualFold(gotScheme, scheme) {
+			return "", "", fmt.Errorf("%q prefix not found, expected %q <value>", scheme, scheme)
+		}
+		encoded = rest
 	}
 
 	decoded, err := base64.StdEncoding.DecodeString(encoded)
@@ -246,7 +265,10 @@ func (a *authenticator) parseAuthorizationHeader(headers map[string][]string) (s
 		return "", "", errAuthorizationHeaderInvalid
 	}
 
-	return orig, id, nil
+	// Normalize equivalent representations before forwarding the header and deriving
+	// the cache fingerprint. Otherwise, scheme casing is mistaken for a colliding
+	// API key secret when another representation has already populated the cache.
+	return elasticsearchAuthScheme + " " + base64.StdEncoding.EncodeToString(decoded), id, nil
 }
 
 func getHeader(headers map[string][]string, titlecase, lowercase string) (string, bool) {
@@ -271,38 +293,42 @@ func getHeader(headers map[string][]string, titlecase, lowercase string) (string
 // hasPrivileges checks if the API Key is valid and has the required privileges.
 func (a *authenticator) hasPrivileges(ctx context.Context, authHeaderValue string) (bool, string, error) {
 	clientMetadata := client.FromContext(ctx).Metadata
-	applications := make([]types.ApplicationPrivilegesCheck, len(a.config.ApplicationPrivileges))
-	for i, app := range a.config.ApplicationPrivileges {
-		// Start with static resources
-		resources := make([]string, len(app.Resources))
-		copy(resources, app.Resources)
-
-		// Add dynamic resources from client metadata
-		for _, dr := range app.DynamicResources {
-			values := clientMetadata.Get(dr.Metadata)
-			if len(values) == 0 {
-				return false, "", &metadataValidationError{
-					message: fmt.Sprintf("missing client metadata %q required for dynamic resource", dr.Metadata),
-				}
+	required, err := privilegeChecks(clientMetadata, a.config.ApplicationPrivileges)
+	if err != nil {
+		return false, "", err
+	}
+	// Request the required and alternative privileges together, so any_of
+	// costs no additional round trips. An alternative whose dynamic resources
+	// need missing metadata cannot be granted, so it is left out.
+	alternatives := make([][]types.ApplicationPrivilegesCheck, 0, len(a.config.AnyOf))
+	n := len(required)
+	for _, set := range a.config.AnyOf {
+		checks, err := privilegeChecks(clientMetadata, set.ApplicationPrivileges)
+		if err != nil {
+			var metadataErr *metadataValidationError
+			if errors.As(err, &metadataErr) {
+				continue
 			}
-			for _, value := range values {
-				resources = append(resources, fmt.Sprintf(dr.Format, value))
-			}
+			return false, "", err
 		}
-
-		applications[i] = types.ApplicationPrivilegesCheck{
-			Application: app.Application,
-			Privileges:  app.Privileges,
-			Resources:   resources,
-		}
+		alternatives = append(alternatives, checks)
+		n += len(checks)
+	}
+	if len(a.config.AnyOf) != 0 && len(alternatives) == 0 {
+		return false, "", errNoAlternative
+	}
+	applications := make([]types.ApplicationPrivilegesCheck, 0, n)
+	applications = append(applications, required...)
+	for _, checks := range alternatives {
+		applications = append(applications, checks...)
 	}
 	req := a.esClient.Security.HasPrivileges()
-	req.Header(authorizationHeader, authHeaderValue)
+	req.Header(elasticsearchAuthHeader, authHeaderValue)
 	req.Request(&hasprivileges.Request{Application: applications})
 	privCtx := ctx
 	cancel := func() {}
-	if a.config.Timeout > 0 {
-		privCtx, cancel = context.WithTimeoutCause(ctx, a.config.Timeout,
+	if a.config.ClientConfig.Timeout > 0 {
+		privCtx, cancel = context.WithTimeoutCause(ctx, a.config.ClientConfig.Timeout,
 			errHasPrivilegesTimeout,
 		)
 	}
@@ -319,7 +345,82 @@ func (a *authenticator) hasPrivileges(ctx context.Context, authHeaderValue strin
 		}
 		return false, "", err
 	}
-	return resp.HasAllRequested, resp.Username, nil
+	// has_all_requested implies that every alternative is granted.
+	if len(alternatives) == 0 || resp.HasAllRequested {
+		return resp.HasAllRequested, resp.Username, nil
+	}
+	granted := allGranted(resp.Application, required) &&
+		slices.ContainsFunc(alternatives, func(checks []types.ApplicationPrivilegesCheck) bool {
+			return allGranted(resp.Application, checks)
+		})
+	return granted, resp.Username, nil
+}
+
+// privilegeChecks builds the _has_privileges checks for the given application
+// privileges, resolving dynamic resources from client metadata.
+func privilegeChecks(clientMetadata client.Metadata, apps []ApplicationPrivilegesConfig) ([]types.ApplicationPrivilegesCheck, error) {
+	applications := make([]types.ApplicationPrivilegesCheck, len(apps))
+	for i, app := range apps {
+		// Start with static resources
+		resources := make([]string, len(app.Resources))
+		copy(resources, app.Resources)
+
+		// Add dynamic resources from client metadata
+		for _, dr := range app.DynamicResources {
+			values := clientMetadata.Get(dr.Metadata)
+			if len(values) == 0 {
+				return nil, &metadataValidationError{
+					message: fmt.Sprintf("missing client metadata %q required for dynamic resource", dr.Metadata),
+				}
+			}
+			for _, value := range values {
+				resources = append(resources, fmt.Sprintf(dr.Format, value))
+			}
+		}
+
+		applications[i] = types.ApplicationPrivilegesCheck{
+			Application: app.Application,
+			Privileges:  app.Privileges,
+			Resources:   resources,
+		}
+	}
+	return applications, nil
+}
+
+// allGranted reports whether the _has_privileges result grants every privilege
+// on every resource of the given checks. Entries missing from the result are
+// treated as not granted.
+func allGranted(result types.ApplicationsPrivileges, checks []types.ApplicationPrivilegesCheck) bool {
+	for _, check := range checks {
+		for _, resource := range check.Resources {
+			for _, privilege := range check.Privileges {
+				if !result[check.Application][resource][privilege] {
+					return false
+				}
+			}
+		}
+	}
+	return true
+}
+
+// optionalKeyMetadata returns the cache.key_metadata keys used only by any_of
+// dynamic resources. Keys used by application_privileges, or by no dynamic
+// resource (for example to partition the cache), stay required.
+func optionalKeyMetadata(cfg *Config) map[string]bool {
+	optional := make(map[string]bool)
+	for _, set := range cfg.AnyOf {
+		for _, app := range set.ApplicationPrivileges {
+			for _, dr := range app.DynamicResources {
+				optional[dr.Metadata] = true
+			}
+		}
+	}
+	for _, app := range cfg.ApplicationPrivileges {
+		for _, dr := range app.DynamicResources {
+			delete(optional, dr.Metadata)
+		}
+	}
+	return optional
 }
 
 // getCacheKey computes a cache key for the given API Key ID and headers.
@@ -328,25 +429,43 @@ func (a *authenticator) getCacheKey(ctx context.Context, id string, headers map[
 	if len(a.config.Cache.KeyMetadata) != 0 {
 		clientMetadata = client.FromContext(ctx).Metadata
 	}
-	key := id
+	// Quote every component, so a space inside the ID or a header value
+	// cannot make two different requests share a key.
+	key := strconv.AppendQuote(nil, id)
 	for _, header := range a.config.Cache.KeyHeaders {
 		value, ok := getHeader(headers, header, strings.ToLower(header))
 		if !ok {
 			return "", fmt.Errorf("error computing cache key: missing header %q", header)
 		}
-		key += " " + value
+		key = append(key, ' ')
+		key = strconv.AppendQuote(key, value)
 	}
 	for _, metadataKey := range a.config.Cache.KeyMetadata {
 		values := clientMetadata.Get(metadataKey)
 		if len(values) == 0 {
-			return "", fmt.Errorf("error computing cache key: missing client metadata %q", metadataKey)
+			if !a.optionalKeyMetadata[metadataKey] {
+				return "", fmt.Errorf("error computing cache key: missing client metadata %q", metadataKey)
+			}
+			// Unquoted, so it cannot match any value list.
+			key = append(key, " -"...)
+			continue
 		}
-		key += " " + values[0]
+		// Dynamic resources check every metadata value, so the key must
+		// include every value: a decision for [a] must not be reused for
+		// [a, b].
+		key = append(key, " ["...)
+		for i, value := range values {
+			if i > 0 {
+				key = append(key, ' ')
+			}
+			key = strconv.AppendQuote(key, value)
+		}
+		key = append(key, ']')
 	}
-	return key, nil
+	return string(key), nil
 }
 
-// Authenticate validates an ApiKey scheme Authorization header,
+// Authenticate validates the API Key in the configured header,
 // passing it to Elasticsearch for checking privileges.
 //
 // Callers can use status.FromError(err) to get the status code
@@ -414,7 +533,9 @@ func (a *authenticator) Authenticate(ctx context.Context, headers map[string][]s
 			switch elasticsearchErr.Status {
 			case http.StatusUnauthorized, http.StatusForbidden:
 				return ctx, status.Error(codes.Unauthenticated, err.Error())
-			case http.StatusTooManyRequests, http.StatusGatewayTimeout:
+			case http.StatusTooManyRequests, http.StatusGatewayTimeout, http.StatusBadGateway, http.StatusServiceUnavailable:
+				// 502/503/504/429 are transient ES overload/unavailability errors (retried by the ES client when enabled);
+				// surface as backpressure so callers throttle+retry
 				return ctx, errorWithDetails(status.New(
 					codes.ResourceExhausted, "failed to check privileges",
 				), id, retryDelay)
@@ -438,13 +559,17 @@ func (a *authenticator) Authenticate(ctx context.Context, headers map[string][]s
 					), id, 0)
 				a.cache.Add(cacheKey, &cacheEntry{key: derivedKey, err: goneErr})
 				return ctx, goneErr
-			case http.StatusBadGateway, http.StatusServiceUnavailable:
-				return ctx, errorWithDetails(status.New(
-					codes.Unavailable, "failed to check privileges",
-				), id, retryDelay)
 			default:
 				return ctx, status.Errorf(codes.Internal, "error checking privileges: %v", err)
 			}
+		}
+		if errors.Is(err, errNoAlternative) {
+			// Not cached: Elasticsearch was not called, so the API Key
+			// was not verified, and a cached entry would hold an
+			// unverified secret for this key ID.
+			return ctx, errorWithDetails(status.New(
+				codes.PermissionDenied, "unauthorized",
+			), id, 0)
 		}
 		// Check if this is a metadata validation error (client error)
 		var metadataErr *metadataValidationError

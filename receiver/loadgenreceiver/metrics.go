@@ -156,6 +156,9 @@ func (ar *metricsGenerator) Start(ctx context.Context, _ component.Host) error {
 					ar.stats.MetricDataPoints += recordCount
 					ar.statsMu.Unlock()
 				}
+				if !waitJitter(startCtx, ar.cfg.Metrics.Jitter) {
+					return
+				}
 			}
 		}()
 	}

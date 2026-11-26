@@ -140,7 +140,7 @@ func TestESStore_LargeShardDocument(t *testing.T) {
 
 func TestESStore_MissingIndex(t *testing.T) {
 	client := esClient(t)
-	store := newESStore(t, client, "test-missing-index")
+	store := newESStoreWithoutIndex(t, client, "test-missing-index")
 
 	// First Set should succeed — ES auto-creates the index.
 	err := store.Set("first", "value")
@@ -205,16 +205,24 @@ func esClient(t *testing.T) *elasticsearch.Client {
 		t.Fatalf("creating ES client: %v", err)
 	}
 
-	deadline := time.Now().Add(2 * time.Minute)
+	// Wait for the cluster to reach at least yellow health. GET / on
+	// a freshly started node returns 200 before the cluster state is
+	// recovered, and document requests issued in that window block on
+	// the "state not recovered" cluster block, which can eat most of
+	// a test's wait budget.
+	deadline := time.Now().Add(esStartupTimeout)
 	var lastErr error
 	for time.Now().Before(deadline) {
-		resp, err := client.Info()
+		resp, err := client.Cluster.Health(
+			client.Cluster.Health.WithWaitForStatus("yellow"),
+			client.Cluster.Health.WithTimeout(5*time.Second),
+		)
 		if err != nil {
 			lastErr = err
 		} else {
 			_ = resp.Body.Close()
 			if resp.IsError() {
-				lastErr = fmt.Errorf("ES info: %s", resp.Status())
+				lastErr = fmt.Errorf("ES cluster health: %s", resp.Status())
 			} else {
 				lastErr = nil
 				break
@@ -223,13 +231,19 @@ func esClient(t *testing.T) *elasticsearch.Client {
 		time.Sleep(time.Second)
 	}
 	if lastErr != nil {
-		t.Fatalf("ES not ready after 2m: %v", lastErr)
+		t.Fatalf("ES not ready after %s: %v", esStartupTimeout, lastErr)
 	}
 
 	return client
 }
 
-const esPort = "9200"
+const (
+	esPort = "9200"
+
+	// esStartupTimeout bounds how long tests wait for Elasticsearch to
+	// become reachable and healthy.
+	esStartupTimeout = 2 * time.Minute
+)
 
 // startESContainer starts an Elasticsearch container via
 // testcontainers-go and returns its HTTP endpoint. The container is
@@ -245,7 +259,17 @@ func startESContainer(t *testing.T) string {
 			"ES_JAVA_OPTS":           "-Xms512m -Xmx512m",
 			"xpack.security.enabled": "false",
 		},
-		WaitingFor: wait.ForListeningPort(esPort).WithStartupTimeout(2 * time.Minute),
+		// The port opens before the cluster state is recovered, so also
+		// require the health endpoint to report yellow (or better).
+		// ES answers 408 while the requested status has not been reached.
+		WaitingFor: wait.ForAll(
+			wait.ForListeningPort(esPort),
+			wait.ForHTTP("/_cluster/health?wait_for_status=yellow&timeout=1s").
+				WithPort(esPort+"/tcp").
+				WithStatusCodeMatcher(func(status int) bool {
+					return status >= 200 && status < 300
+				}),
+		).WithDeadline(esStartupTimeout),
 	}
 
 	container, err := testcontainers.GenericContainer(context.Background(), testcontainers.GenericContainerRequest{
@@ -286,12 +310,38 @@ type esStore struct {
 
 // newESStore returns an esStore backed by the given index. Any
 // existing index with the same name is deleted first so the test
-// starts with a clean slate.
+// starts with a clean slate, and the index is then created up front
+// so the first write under test does not pay for index auto-creation
+// and dynamic mapping while a timed assertion is running.
 func newESStore(t *testing.T, client *elasticsearch.Client, index string) *esStore {
 	t.Helper()
+	store := newESStoreWithoutIndex(t, client, index)
+
+	resp, err := client.Indices.Create(index,
+		client.Indices.Create.WithWaitForActiveShards("1"),
+	)
+	if err != nil {
+		t.Fatalf("create index %s: %v", index, err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+	if resp.IsError() {
+		t.Fatalf("create index %s: %s", index, resp.Status())
+	}
+	return store
+}
+
+// newESStoreWithoutIndex returns an esStore whose index does not
+// exist yet. Any existing index with the same name is deleted. Use
+// this when a test needs to exercise ES index auto-creation.
+func newESStoreWithoutIndex(t *testing.T, client *elasticsearch.Client, index string) *esStore {
+	t.Helper()
 	resp, err := client.Indices.Delete([]string{index})
-	if err == nil {
-		_ = resp.Body.Close()
+	if err != nil {
+		t.Fatalf("delete index %s: %v", index, err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+	if resp.IsError() && resp.StatusCode != http.StatusNotFound {
+		t.Fatalf("delete index %s: %s", index, resp.Status())
 	}
 	return &esStore{client: client, index: index}
 }

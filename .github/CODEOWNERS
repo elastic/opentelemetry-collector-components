@@ -2,25 +2,28 @@
 * @elastic/otel-devs
 
 # Per-component owners
-.github/workflows/bump_otelbench.yaml      @elastic/obs-ds-intake-services @elastic/obs-ds-hosted-services
-.github/workflows/changelog_otelbench.yaml @elastic/obs-ds-intake-services @elastic/obs-ds-hosted-services
-.github/workflows/release_otelbench.yaml   @elastic/obs-ds-intake-services @elastic/obs-ds-hosted-services
-internal/elasticattr                   @elastic/obs-ds-intake-services @elastic/obs-ds-hosted-services @elastic/ingest-otel-data
-loadgen                                @elastic/obs-ds-intake-services @elastic/obs-ds-hosted-services @elastic/ingest-otel-data
-receiver/loadgenreceiver               @elastic/obs-ds-intake-services @elastic/obs-ds-hosted-services @elastic/ingest-otel-data
-receiver/elasticapmintakereceiver      @elastic/obs-ds-intake-services @elastic/obs-ds-hosted-services @elastic/ingest-otel-data
-receiver/akamaisiemreceiver            @elastic/security-service-integrations @elastic/ingest-otel-data
-receiver/entityanalyticsreceiver       @elastic/security-service-integrations @elastic/ingest-otel-data
-processor/elasticinframetricsprocessor @elastic/obs-infraobs-integrations @elastic/ingest-otel-data
-processor/elasticapmprocessor          @elastic/obs-ds-intake-services @elastic/obs-ds-hosted-services @elastic/ingest-otel-data
-processor/elastictraceprocessor        @elastic/obs-ds-intake-services @elastic/obs-ds-hosted-services @elastic/ingest-otel-data
-processor/lsmintervalprocessor         @elastic/obs-ds-intake-services @elastic/obs-ds-hosted-services @elastic/ingest-otel-data
-processor/ratelimitprocessor           @elastic/ingest-managed-jobs @elastic/ingest-otel-data
-processor/integrationprocessor         @elastic/ecosystem @elastic/ingest-otel-data
-processor/partitioningprocessor        @elastic/ingest-otel-data
-connector/elasticapmconnector          @elastic/obs-ds-intake-services @elastic/obs-ds-hosted-services @elastic/ingest-otel-data
-extension/apikeyauthextension          @elastic/obs-ds-intake-services @elastic/obs-ds-hosted-services @elastic/ingest-otel-data
-extension/apmconfigextension           @elastic/ingest-otel-data
-extension/fileintegrationextension     @elastic/ecosystem @elastic/ingest-otel-data
-pkg/integrations                       @elastic/ecosystem @elastic/ingest-otel-data
-extension/awscredentialsproviderextension             @elastic/obs-infraobs-integrations @elastic/ingest-otel-data
+.github/workflows/bump_otelbench.yaml      @elastic/otel-devs @elastic/obs-ds-intake-services @elastic/obs-ds-hosted-services
+.github/workflows/changelog_otelbench.yaml @elastic/otel-devs @elastic/obs-ds-intake-services @elastic/obs-ds-hosted-services
+.github/workflows/release_otelbench.yaml   @elastic/otel-devs @elastic/obs-ds-intake-services @elastic/obs-ds-hosted-services
+internal/elasticattr                       @elastic/otel-devs @elastic/obs-ds-intake-services @elastic/obs-ds-hosted-services
+loadgen                                    @elastic/otel-devs @elastic/obs-ds-intake-services @elastic/obs-ds-hosted-services
+receiver/loadgenreceiver                   @elastic/otel-devs @elastic/obs-ds-intake-services @elastic/obs-ds-hosted-services
+receiver/elasticapmintakereceiver          @elastic/otel-devs @elastic/obs-ds-intake-services @elastic/obs-ds-hosted-services @elastic/obs-signals-traces-team
+receiver/akamaisiemreceiver                @elastic/otel-devs @elastic/security-service-integrations
+receiver/entityanalyticsreceiver           @elastic/otel-devs @elastic/security-service-integrations
+receiver/vercelreceiver                    @elastic/otel-devs @elastic/obs-ds-intake-services @elastic/obs-ds-hosted-services
+receiver/prometheusscrapereceiver          @elastic/otel-devs @elastic/obs-signals-metrics-team
+processor/elasticinframetricsprocessor     @elastic/otel-devs @elastic/obs-signals-integrations-team
+processor/elasticapmprocessor              @elastic/otel-devs @elastic/obs-ds-intake-services @elastic/obs-ds-hosted-services @elastic/obs-signals-traces-team
+processor/elastictraceprocessor            @elastic/otel-devs @elastic/obs-ds-intake-services @elastic/obs-ds-hosted-services @elastic/obs-signals-traces-team
+processor/lsmintervalprocessor             @elastic/otel-devs @elastic/obs-ds-intake-services @elastic/obs-ds-hosted-services
+processor/ratelimitprocessor               @elastic/otel-devs @elastic/ingest-managed-jobs
+processor/integrationprocessor             @elastic/otel-devs @elastic/ecosystem
+connector/elasticapmconnector              @elastic/otel-devs @elastic/obs-ds-intake-services @elastic/obs-ds-hosted-services @elastic/obs-signals-traces-team
+extension/apikeyauthextension              @elastic/otel-devs @elastic/obs-ds-intake-services @elastic/obs-ds-hosted-services
+extension/apmconfigextension               @elastic/otel-devs @elastic/obs-signals-traces-team
+extension/fileintegrationextension         @elastic/otel-devs @elastic/ecosystem
+extension/vercelencodingextension          @elastic/otel-devs @elastic/obs-signals-integrations-team
+extension/compressedotlpencodingextension  @elastic/otel-devs @elastic/obs-ds-intake-services @elastic/obs-ds-hosted-services
+pkg/integrations                           @elastic/otel-devs @elastic/ecosystem
+extension/awscredentialsproviderextension  @elastic/otel-devs @elastic/obs-signals-integrations-team

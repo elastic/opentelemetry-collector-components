@@ -149,6 +149,9 @@ func (ar *tracesGenerator) Start(ctx context.Context, _ component.Host) error {
 					ar.stats.Spans += recordCount
 					ar.statsMu.Unlock()
 				}
+				if !waitJitter(startCtx, ar.cfg.Traces.Jitter) {
+					return
+				}
 			}
 		}()
 	}

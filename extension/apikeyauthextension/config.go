@@ -18,6 +18,7 @@
 package apikeyauthextension // import "github.com/elastic/opentelemetry-collector-components/extension/apikeyauthextension"
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -25,6 +26,15 @@ import (
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/config/confighttp"
 	"go.opentelemetry.io/collector/confmap"
+)
+
+const (
+	// defaultHeader is the header that holds the API Key by default.
+	defaultHeader = "Authorization"
+
+	// defaultScheme is the authentication scheme that precedes the API Key
+	// by default.
+	defaultScheme = "ApiKey"
 )
 
 var defaultElasticsearchRetryConfig = RetryConfig{
@@ -37,11 +47,31 @@ var defaultElasticsearchRetryConfig = RetryConfig{
 type Config struct {
 	// ClientConfig configures the outbound Elasticsearch HTTP client.
 	// In this extension, timeout > 0 bounds the privilege-check request.
-	confighttp.ClientConfig `mapstructure:",squash"`
+	ClientConfig confighttp.ClientConfig `mapstructure:",squash"`
+
+	// Header is the request header that holds the API Key.
+	// Defaults to "Authorization".
+	Header string `mapstructure:"header"`
+
+	// Scheme is the authentication scheme that precedes the API Key in
+	// the header, matched case-insensitively. Defaults to "ApiKey".
+	// If empty, the header value is the raw API Key.
+	Scheme string `mapstructure:"scheme"`
 
 	// ApplicationPrivileges defines the application privileges
 	// that are queried when verifying API Keys.
 	ApplicationPrivileges []ApplicationPrivilegesConfig `mapstructure:"application_privileges,omitempty"`
+
+	// AnyOf defines alternative sets of application privileges. When
+	// non-empty, an API Key is valid only if it has all ApplicationPrivileges
+	// and all privileges of at least one AnyOf entry. Every privilege is
+	// checked with a single _has_privileges request.
+	//
+	// An AnyOf entry whose dynamic resources need metadata the request does
+	// not have is not satisfied; the other entries are still checked. If no
+	// entry can be checked, the request is denied without calling
+	// Elasticsearch.
+	AnyOf []PrivilegeSetConfig `mapstructure:"any_of,omitempty"`
 
 	// Cache holds configuration related to caching
 	// API Key verification results.
@@ -124,6 +154,36 @@ type ApplicationPrivilegesConfig struct {
 	DynamicResources []DynamicResource `mapstructure:"dynamic_resources,omitempty"`
 }
 
+// PrivilegeSetConfig defines one alternative set of application privileges.
+type PrivilegeSetConfig struct {
+	// ApplicationPrivileges holds the application privileges that must
+	// all be granted for this alternative to be satisfied.
+	ApplicationPrivileges []ApplicationPrivilegesConfig `mapstructure:"application_privileges"`
+}
+
+// Validate validates the ApplicationPrivilegesConfig. Elasticsearch rejects
+// a privilege check without an application, privileges or resources.
+func (cfg *ApplicationPrivilegesConfig) Validate() error {
+	switch {
+	case cfg.Application == "":
+		return errors.New("application must be non-empty")
+	case len(cfg.Privileges) == 0:
+		return errors.New("privileges must be non-empty")
+	case len(cfg.Resources) == 0 && len(cfg.DynamicResources) == 0:
+		return errors.New("resources or dynamic_resources must be non-empty")
+	}
+	return nil
+}
+
+// Validate validates the PrivilegeSetConfig. An alternative without
+// privileges would be satisfied by any valid API Key.
+func (cfg *PrivilegeSetConfig) Validate() error {
+	if len(cfg.ApplicationPrivileges) == 0 {
+		return errors.New("application_privileges must be non-empty")
+	}
+	return nil
+}
+
 // DynamicResource defines a resource that is extracted from client metadata
 // at runtime, with optional formatting.
 type DynamicResource struct {
@@ -145,7 +205,8 @@ type CacheConfig struct {
 	// KeyMetadata holds an optional set of client metadata keys to
 	// include in the cache key, for partitioning the API Key space.
 	// If any keys are missing from the client metadata, an error
-	// will be returned.
+	// will be returned, except for keys used only by any_of dynamic
+	// resources: those are recorded as absent in the cache key.
 	KeyMetadata []string `mapstructure:"key_metadata,omitempty"`
 
 	// PBKDF2Iterations defines the iteration count for PBKDF2
@@ -167,6 +228,8 @@ func createDefaultConfig() component.Config {
 
 	return &Config{
 		ClientConfig: clientConfig,
+		Header:       defaultHeader,
+		Scheme:       defaultScheme,
 		Cache: CacheConfig{
 			Capacity:         1000,
 			PBKDF2Iterations: 1000,
@@ -263,20 +326,42 @@ func (dr *DynamicResource) Validate() error {
 
 // Validate validates the Config.
 func (cfg *Config) Validate() error {
+	if cfg.Header == "" {
+		return errors.New("header must be non-empty")
+	}
+	if h := cfg.Header; strings.TrimSpace(h) != h || strings.ContainsAny(h, " \t:") {
+		return fmt.Errorf("header %q must be a valid HTTP header name without whitespace or colons", h)
+	}
+	if strings.ContainsAny(cfg.Scheme, " \t") {
+		return fmt.Errorf("scheme %q must not contain whitespace", cfg.Scheme)
+	}
 	// Build a set of metadata keys in cache.key_metadata for quick lookup
 	keyMetadataSet := make(map[string]bool)
 	for _, key := range cfg.Cache.KeyMetadata {
 		keyMetadataSet[key] = true
 	}
-	// Validate each application privilege config
-	for i, app := range cfg.ApplicationPrivileges {
-		// Check that dynamic resource metadata keys are in cache.key_metadata
+	if err := validateDynamicResourceKeys("application_privileges", cfg.ApplicationPrivileges, keyMetadataSet); err != nil {
+		return err
+	}
+	for i, set := range cfg.AnyOf {
+		path := fmt.Sprintf("any_of::%d::application_privileges", i)
+		if err := validateDynamicResourceKeys(path, set.ApplicationPrivileges, keyMetadataSet); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// validateDynamicResourceKeys checks that dynamic resource metadata keys are
+// in cache.key_metadata, so cached decisions are scoped to the checked resources.
+func validateDynamicResourceKeys(path string, apps []ApplicationPrivilegesConfig, keyMetadataSet map[string]bool) error {
+	for i, app := range apps {
 		for j, dr := range app.DynamicResources {
 			if dr.Metadata != "" && !keyMetadataSet[dr.Metadata] {
 				return fmt.Errorf(""+
-					"application_privileges::%d::dynamic_resources::%d: "+
+					"%s::%d::dynamic_resources::%d: "+
 					"dynamic resource metadata %q must be included in cache.key_metadata",
-					i, j, dr.Metadata,
+					path, i, j, dr.Metadata,
 				)
 			}
 		}

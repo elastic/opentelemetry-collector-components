@@ -24,7 +24,8 @@ All that is required to enable the elasticapmintake receiver is to include it in
 ```
 receivers:
   elasticapmintake:
-    batch_size: 10
+    batch_bytes: 524288
+    batch_flush_interval: 1s
     agent_config:
       enabled: false
 ```
@@ -33,7 +34,9 @@ receivers:
 
 The elasticapmintake receiver embeds the [confighttp.ServerConfig](https://github.com/open-telemetry/opentelemetry-collector/blob/main/config/confighttp/README.md), which means it supports standard HTTP server configuration, including TLS/mTLS and authentication.
 
-`batch_size` controls how many intake v2 events are decoded and processed together before the receiver sends the resulting pdata to the next component. The default is `10`.
+`batch_bytes` controls how many intake v2 events are decoded and processed together before the receiver sends the resulting pdata to the next component: events accumulate until their raw NDJSON size reaches this many bytes. A batch may exceed it by up to one `max_event_size` before flushing, and the decoded in-memory representation is typically ~5-7x the raw NDJSON size. The default is `524288` (512KiB).
+
+`batch_flush_interval` bounds how long buffered events may wait for their batch to fill on a slow stream. The bound is checked as events arrive; an idle stream's buffered tail is processed on the next event or at end of stream, matching intake v2 semantics in apm-server. Set to `0` to disable the bound. The default is `1s`.
 
 ### TLS and mTLS settings
 

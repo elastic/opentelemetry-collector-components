@@ -1,0 +1,60 @@
+resourceLogs:
+  - resource:
+      attributes:
+        - key: vercel.project.id
+          value:
+            stringValue: proj_A
+        - key: vercel.owner.id
+          value:
+            stringValue: team_1
+    scopeLogs:
+      - scope:
+          name: otelcol/vercel_encoding
+          attributes:
+            - key: encoding.format
+              value:
+                stringValue: vercel.analytics.v2
+        logRecords:
+          - timeUnixNano: "1694723400000000000"
+            attributes:
+              - key: url.path
+                value:
+                  stringValue: /home
+              - key: vercel.analytics.event.type
+                value:
+                  stringValue: pageview
+          - timeUnixNano: "1694723405000000000"
+            attributes:
+              - key: url.path
+                value:
+                  stringValue: /about
+              - key: vercel.analytics.event.type
+                value:
+                  stringValue: pageview
+  - resource:
+      attributes:
+        - key: vercel.project.id
+          value:
+            stringValue: proj_B
+        - key: vercel.owner.id
+          value:
+            stringValue: team_1
+    scopeLogs:
+      - scope:
+          name: otelcol/vercel_encoding
+          attributes:
+            - key: encoding.format
+              value:
+                stringValue: vercel.analytics.v2
+        logRecords:
+          - timeUnixNano: "1694723410000000000"
+            attributes:
+              - key: url.path
+                value:
+                  stringValue: /signup
+              - key: vercel.analytics.event.name
+                value:
+                  stringValue: signup
+              - key: vercel.analytics.event.type
+                value:
+                  stringValue: event
