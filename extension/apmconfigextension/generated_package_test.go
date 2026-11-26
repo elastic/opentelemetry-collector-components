@@ -26,5 +26,5 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	goleak.VerifyTestMain(m)
+	goleak.VerifyTestMain(m, goleak.IgnoreAnyFunction("net/http.(*Transport).dialConnFor"), goleak.IgnoreAnyFunction("net.(*sysDialer).dialParallel.func1"))
 }

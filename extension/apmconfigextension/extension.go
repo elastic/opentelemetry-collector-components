@@ -36,7 +36,10 @@ const (
 	defaultOpAMPPath = "/v1/opamp"
 )
 
-type configClientFactory = func(context.Context, component.Host, component.TelemetrySettings) (apmconfig.RemoteConfigClient, error)
+// configClientFactory creates the remote config client. The returned stop
+// function, if not nil, is called on shutdown after the context passed to the
+// factory has been canceled; it must release all resources held by the client.
+type configClientFactory = func(context.Context, component.Host, component.TelemetrySettings) (apmconfig.RemoteConfigClient, func(context.Context) error, error)
 
 type apmConfigExtension struct {
 	telemetrySettings component.TelemetrySettings
@@ -45,6 +48,7 @@ type apmConfigExtension struct {
 	serverHTTP      *http.Server
 	shutdownWG      sync.WaitGroup
 	clientFactory   configClientFactory
+	stopClient      func(context.Context) error
 
 	cancelFn context.CancelFunc
 }
@@ -58,7 +62,8 @@ func newApmConfigExtension(cfg *Config, set extension.Settings, clientFactory co
 func (op *apmConfigExtension) Start(ctx context.Context, host component.Host) error {
 	ctx, op.cancelFn = context.WithCancel(ctx)
 
-	remoteConfigClient, err := op.clientFactory(ctx, host, op.telemetrySettings)
+	remoteConfigClient, stopClient, err := op.clientFactory(ctx, host, op.telemetrySettings)
+	op.stopClient = stopClient
 	if err != nil {
 		return err
 	}
@@ -110,5 +115,9 @@ func (op *apmConfigExtension) Shutdown(ctx context.Context) error {
 		err = op.serverHTTP.Shutdown(ctx)
 	}
 	op.shutdownWG.Wait()
+
+	if op.stopClient != nil {
+		err = errors.Join(err, op.stopClient(ctx))
+	}
 	return err
 }
