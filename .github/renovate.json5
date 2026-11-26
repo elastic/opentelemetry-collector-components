@@ -15,6 +15,18 @@
       ],
       groupName: 'otelcol',
     },
+    {
+      // Components from this repository are built from local source via
+      // `replaces` in the distribution manifests; their versions there are
+      // a v0.0.0 placeholder and must not be updated.
+      matchManagers: [
+        'custom.regex',
+      ],
+      matchPackageNames: [
+        'github.com/elastic/opentelemetry-collector-components/**',
+      ],
+      enabled: false,
+    },
   ],
   customManagers: [
     {
