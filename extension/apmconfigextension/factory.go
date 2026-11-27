@@ -93,14 +93,24 @@ func createExtension(_ context.Context, set extension.Settings, cfg component.Co
 		}()
 
 		// stop waits for the fetcher to exit (ctx must be canceled first)
-		// and then closes the Elasticsearch client.
+		// and then closes the Elasticsearch client. The client is closed
+		// even if the shutdown context expires first.
 		stop := func(shutdownCtx context.Context) error {
+			var waitErr error
 			select {
 			case <-fetcherDone:
-			case <-shutdownCtx.Done():
-				return shutdownCtx.Err()
+			default:
+				select {
+				case <-fetcherDone:
+				case <-shutdownCtx.Done():
+					waitErr = shutdownCtx.Err()
+				}
 			}
-			return esClient.Close(shutdownCtx)
+			closeErr := esClient.Close(shutdownCtx)
+			if waitErr != nil {
+				return waitErr
+			}
+			return closeErr
 		}
 		return centralconfig.NewFetcherAPMWatcher(fetcher, telemetry.Logger), stop, nil
 	}
