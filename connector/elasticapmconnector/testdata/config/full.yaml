@@ -17,6 +17,9 @@ elasticapm:
       memtable_size: 67108864
       memtable_stop_writes_threshold: 4
       max_concurrent_compactions: 2
+    pre_aggregation:
+      enabled: true
+      max_size: 1048576
   custom_resource_attributes:
     - res.1
     - res.2
