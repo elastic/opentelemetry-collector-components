@@ -27,6 +27,13 @@ import (
 	"github.com/elastic/opentelemetry-collector-components/receiver/elasticapmintakereceiver/internal/ndjsondecoder"
 )
 
+const (
+	// MappingModeECS stores intake v2 data in ECS mode (classic APM data streams).
+	MappingModeECS = "ecs"
+	// MappingModeOTel stores intake v2 data in OTel mode (OTel-native data streams).
+	MappingModeOTel = "otel"
+)
+
 // Config defines configuration for the Elastic APM receiver.
 type Config struct {
 	// When using APM agent configuration, information fetched from Elasticsearch will be cached in memory for some time.
@@ -52,6 +59,16 @@ type Config struct {
 
 	// MaxEventSize is the maximum allowed event size, in bytes.
 	MaxEventSize int `mapstructure:"max_event_size"`
+
+	// MappingMode is the value the receiver sets as the x-elastic-mapping-mode
+	// client metadata on every intake v2 request. Downstream Elastic components
+	// (elasticapm processor, elasticapm connector, elasticsearch exporter) use it
+	// to decide how the data is enriched, aggregated and encoded.
+	//
+	// Supported values are "ecs" (default, classic APM data streams) and "otel"
+	// (OTel-native data streams). Any value sent by the client in the
+	// X-Elastic-Mapping-Mode header is always overwritten.
+	MappingMode string `mapstructure:"mapping_mode"`
 
 	ServerConfig confighttp.ServerConfig `mapstructure:",squash"`
 }
@@ -93,6 +110,11 @@ func (cfg *Config) Validate() error {
 	}
 	if cfg.MaxEventSize <= 0 {
 		return fmt.Errorf("max_event_size must be positive")
+	}
+	switch cfg.MappingMode {
+	case MappingModeECS, MappingModeOTel:
+	default:
+		return fmt.Errorf("mapping_mode must be one of [%q, %q], got %q", MappingModeECS, MappingModeOTel, cfg.MappingMode)
 	}
 	return cfg.AgentConfig.Elasticsearch.Validate()
 }

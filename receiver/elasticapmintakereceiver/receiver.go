@@ -112,8 +112,12 @@ func (r *elasticAPMIntakeReceiver) startHTTPServer(ctx context.Context, host com
 	httpMux := http.NewServeMux()
 
 	httpMux.HandleFunc("GET /{$}", r.newRootHandler())
+	mappingMode := r.cfg.MappingMode
+	if mappingMode == "" {
+		mappingMode = MappingModeECS
+	}
 	httpMux.HandleFunc(intakeV2EventsPath, r.newElasticAPMEventsHandler(func(req *http.Request) context.Context {
-		return withECSMappingMode(req.Context())
+		return withMappingModeContext(req.Context(), mappingMode)
 	}))
 	httpMux.HandleFunc(agentConfigPath, r.newElasticAPMConfigsHandler(ctx, host))
 	// TODO rum v2, v3
@@ -339,7 +343,14 @@ func (r *elasticAPMIntakeReceiver) consumeOTel(ctx context.Context, ld *plog.Log
 }
 
 func withECSMappingMode(ctx context.Context) context.Context {
-	return client.NewContext(ctx, withMappingMode(client.FromContext(ctx), "ecs"))
+	return withMappingModeContext(ctx, MappingModeECS)
+}
+
+// withMappingModeContext returns a context whose client.Info carries the given
+// x-elastic-mapping-mode, overwriting any value already present (for example a
+// client-supplied header copied in by include_metadata).
+func withMappingModeContext(ctx context.Context, mode string) context.Context {
+	return client.NewContext(ctx, withMappingMode(client.FromContext(ctx), mode))
 }
 
 // withMappingMode copies existing client.Metadata and sets x-elastic-mapping-mode.

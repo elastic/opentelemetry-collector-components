@@ -18,6 +18,12 @@ elasticapmintake/disabled_max_concurrent_decoders:
 elasticapmintake/custom_max_event_size:
   max_event_size: 2048
 
+elasticapmintake/otel_mapping_mode:
+  mapping_mode: otel
+
+elasticapmintake/invalid_mapping_mode:
+  mapping_mode: none
+
 elasticapmintake/invalid_batch_bytes:
   batch_bytes: 0
 
