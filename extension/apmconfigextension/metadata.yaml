@@ -16,4 +16,15 @@ tests:
           endpoint: localhost:8200
     source:
       elasticsearch:
-        endpoint: http://localhost:8200
+        endpoint: http://localhost:9200
+  goleak:
+    ignore:
+      any:
+        # Since Go 1.23, net/http detaches in-flight dials from the request
+        # context: they are only canceled via Transport.CloseIdleConnections,
+        # and the Elasticsearch client does not expose its transport. A dial
+        # started by the fetcher right before shutdown may therefore briefly
+        # outlive Shutdown.
+        - "net/http.(*Transport).dialConnFor"
+        # Happy Eyeballs fallback dial spawned by the dial above.
+        - "net.(*sysDialer).dialParallel.func1"

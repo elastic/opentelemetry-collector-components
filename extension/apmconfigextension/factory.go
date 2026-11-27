@@ -19,7 +19,6 @@ package apmconfigextension // import "github.com/elastic/opentelemetry-collector
 
 import (
 	"context"
-	"sync"
 	"time"
 
 	"go.opentelemetry.io/collector/component"
@@ -78,25 +77,42 @@ func createDefaultConfig() component.Config {
 
 func createExtension(_ context.Context, set extension.Settings, cfg component.Config) (extension.Extension, error) {
 	extCfg := cfg.(*Config)
-	elasticsearchRemoteConfig := func(ctx context.Context, host component.Host, telemetry component.TelemetrySettings) (apmconfig.RemoteConfigClient, error) {
+	elasticsearchRemoteConfig := func(ctx context.Context, host component.Host, telemetry component.TelemetrySettings) (apmconfig.RemoteConfigClient, func(context.Context) error, error) {
 		esClient, err := extCfg.Source.Elasticsearch.ClientConfig.ToClient(ctx, host.GetExtensions(), telemetry)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		fetcher := agentcfg.NewElasticsearchFetcher(esClient, extCfg.Source.Elasticsearch.CacheDuration, telemetry.Logger)
 
-		var wg sync.WaitGroup
-		wg.Add(1)
+		fetcherDone := make(chan struct{})
 		go func() {
-			// ensure Go routine is scheduled
-			wg.Done()
+			defer close(fetcherDone)
 			if err := fetcher.Run(ctx); err != nil {
 				set.Logger.Error(err.Error())
 			}
 		}()
 
-		wg.Wait()
-		return centralconfig.NewFetcherAPMWatcher(fetcher, telemetry.Logger), nil
+		// stop waits for the fetcher to exit (ctx must be canceled first)
+		// and then closes the Elasticsearch client. The client is closed
+		// even if the shutdown context expires first.
+		stop := func(shutdownCtx context.Context) error {
+			var waitErr error
+			select {
+			case <-fetcherDone:
+			default:
+				select {
+				case <-fetcherDone:
+				case <-shutdownCtx.Done():
+					waitErr = shutdownCtx.Err()
+				}
+			}
+			closeErr := esClient.Close(shutdownCtx)
+			if waitErr != nil {
+				return waitErr
+			}
+			return closeErr
+		}
+		return centralconfig.NewFetcherAPMWatcher(fetcher, telemetry.Logger), stop, nil
 	}
 	return newApmConfigExtension(cfg.(*Config), set, elasticsearchRemoteConfig), nil
 }
