@@ -21,6 +21,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
+	"slices"
 	"testing"
 
 	"github.com/cockroachdb/pebble"
@@ -34,6 +35,7 @@ import (
 type fatLSMShape struct {
 	resources int
 	dps       int
+	offset    int // first resource index, to build disjoint operands
 }
 
 // BenchmarkCompactPeak measures lone MERGE and sibling combine on a fat
@@ -64,6 +66,16 @@ func BenchmarkCompactPeak(b *testing.B) {
 	})
 	b.Run(fmt.Sprintf("combine/PebbleCompact/%dKiB+%dKiB", len(base)/1024, len(sibling)/1024), func(b *testing.B) {
 		benchPebbleCompact(b, base, sibling)
+	})
+	// Many small disjoint requests on top of a stored value, delivered newest
+	// first as pebble does during compaction and export.
+	chain := make([][]byte, 32)
+	for i := range chain {
+		chain[i] = mustFatLSMOperand(b, fatLSMShape{resources: 1, dps: 16, offset: 64 + i})
+	}
+	slices.Reverse(chain)
+	b.Run(fmt.Sprintf("chain/Finish/%dx%dKiB+%dKiB", len(chain), len(chain[0])/1024, len(base)/1024), func(b *testing.B) {
+		benchFinish(b, chain[0], slices.Concat(chain[1:], [][]byte{base})...)
 	})
 }
 
@@ -191,7 +203,7 @@ func peakCompactMetrics(shape fatLSMShape) pmetric.Metrics {
 	for r := 0; r < shape.resources; r++ {
 		rm := md.ResourceMetrics().AppendEmpty()
 		attrs := rm.Resource().Attributes()
-		attrs.PutStr("service.name", fmt.Sprintf("svc-%d", r))
+		attrs.PutStr("service.name", fmt.Sprintf("svc-%d", shape.offset+r))
 		attrs.PutStr("service.environment", "prod")
 		attrs.PutStr("deployment.environment", "production")
 		attrs.PutStr("telemetry.sdk.language", "go")

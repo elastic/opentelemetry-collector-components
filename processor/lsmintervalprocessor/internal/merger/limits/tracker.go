@@ -335,10 +335,6 @@ func (t *Trackers) Unmarshal(d []byte) error {
 		trackerTyp := trackerType(d[offset])
 		offset += 1
 
-		// The below code will panic with NPE if the binary encoding is
-		// unexpected. The expected binary encoding must have one resource
-		// tracker then scope tracker followed by metric tracker followed by
-		// datapoint tracker.
 		var tracker *Tracker
 		switch trackerTyp {
 		case resourceTrackerType:
@@ -350,9 +346,15 @@ func (t *Trackers) Unmarshal(d []byte) error {
 			// tracker for the new scope.
 			latestMetricTracker = nil
 		case metricTrackerType:
+			if latestScopeTracker == nil {
+				return errors.New("failed to unmarshal trackers, metric tracker without scope tracker")
+			}
 			latestMetricTracker = latestScopeTracker.NewMetricTracker()
 			tracker = latestMetricTracker.Tracker
 		case dpTrackerType:
+			if latestMetricTracker == nil {
+				return errors.New("failed to unmarshal trackers, datapoint tracker without metric tracker")
+			}
 			tracker = latestMetricTracker.NewDatapointTracker()
 		default:
 			return errors.New("invalid tracker found")
