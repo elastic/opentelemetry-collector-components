@@ -1,0 +1,132 @@
+// Licensed to Elasticsearch B.V. under one or more contributor
+// license agreements. See the NOTICE file distributed with
+// this work for additional information regarding copyright
+// ownership. Elasticsearch B.V. licenses this file to you under
+// the Apache License, Version 2.0 (the "License"); you may
+// not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing,
+// software distributed under the License is distributed on an
+// "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, either express or implied.  See the License for the
+// specific language governing permissions and limitations
+// under the License.
+
+package elasticapmprocessor // import "github.com/elastic/opentelemetry-collector-components/processor/elastictraceprocessor"
+
+import (
+	"context"
+	"fmt"
+	"testing"
+
+	"go.opentelemetry.io/collector/client"
+	"go.opentelemetry.io/collector/consumer/consumertest"
+	"go.opentelemetry.io/collector/pdata/pcommon"
+	"go.opentelemetry.io/collector/pdata/ptrace"
+	"go.uber.org/zap"
+	semconv "go.opentelemetry.io/otel/semconv/v1.27.0"
+)
+
+// makeHTTPTracesForBench creates trace data representing HTTP spans
+// (a common MOTel workload): numResources services × numScopes × numSpans spans.
+func makeHTTPTracesForBench(numResources, numScopes, numSpans int) ptrace.Traces {
+	td := ptrace.NewTraces()
+	for i := 0; i < numResources; i++ {
+		rs := td.ResourceSpans().AppendEmpty()
+		res := rs.Resource()
+		res.Attributes().PutStr("service.name", fmt.Sprintf("svc-%d", i))
+		res.Attributes().PutStr("deployment.environment", "production")
+		res.Attributes().PutStr("telemetry.sdk.language", "python")
+		res.Attributes().PutStr("agent.name", "go")
+		for j := 0; j < numScopes; j++ {
+			ss := rs.ScopeSpans().AppendEmpty()
+			ss.Scope().SetName(fmt.Sprintf("scope-%d", j))
+			for k := 0; k < numSpans; k++ {
+				span := ss.Spans().AppendEmpty()
+				span.SetName(fmt.Sprintf("/api/v%d/resource", k))
+				span.SetKind(ptrace.SpanKindServer)
+				span.SetStartTimestamp(pcommon.Timestamp(1000000000))
+				span.SetEndTimestamp(pcommon.Timestamp(1010000000))
+				if k > 0 {
+					// Non-root spans have a parent
+					span.SetParentSpanID(pcommon.SpanID([8]byte{1, 0, 0, 0, 0, 0, 0, 0}))
+				}
+				// Typical HTTP span attributes
+				span.Attributes().PutStr(string(semconv.HTTPRequestMethodKey), "GET")
+				span.Attributes().PutInt(string(semconv.HTTPResponseStatusCodeKey), 200)
+				span.Attributes().PutStr(string(semconv.URLFullKey), fmt.Sprintf("http://backend/api/%d", k))
+				span.Attributes().PutStr(string(semconv.ServerAddressKey), "backend")
+				span.Attributes().PutInt(string(semconv.ServerPortKey), 8080)
+			}
+		}
+	}
+	return td
+}
+
+// BenchmarkProcessorConsumeTraces_OTel benchmarks ConsumeTraces in non-ECS (OTLP) mode.
+// This is the default MOTel path for OTLP-sourced traces.
+func BenchmarkProcessorConsumeTraces_OTel(b *testing.B) {
+	cases := []struct {
+		resources, scopes, spans int
+	}{
+		{1, 1, 100},
+		{10, 5, 100},
+	}
+	for _, tc := range cases {
+		name := fmt.Sprintf("r%d_s%d_sp%d", tc.resources, tc.scopes, tc.spans)
+		b.Run(name, func(b *testing.B) {
+			cfg := NewDefaultConfig().(*Config)
+			next := &consumertest.TracesSink{}
+			p := NewTraceProcessor(cfg, next, zap.NewNop())
+			td := makeHTTPTracesForBench(tc.resources, tc.scopes, tc.spans)
+			ctx := context.Background()
+			totalSpans := tc.resources * tc.scopes * tc.spans
+			b.ResetTimer()
+			b.ReportAllocs()
+			for i := 0; i < b.N; i++ {
+				if err := p.ConsumeTraces(ctx, td); err != nil {
+					b.Fatal(err)
+				}
+			}
+			b.ReportMetric(float64(b.Elapsed().Nanoseconds())/float64(b.N*totalSpans), "ns/span")
+		})
+	}
+}
+
+// BenchmarkProcessorConsumeTraces_ECS benchmarks ConsumeTraces in ECS mode.
+// This is the MOTel path for APM intake receiver traces (the high-volume path).
+func BenchmarkProcessorConsumeTraces_ECS(b *testing.B) {
+	cases := []struct {
+		resources, scopes, spans int
+	}{
+		{1, 1, 100},
+		{10, 5, 100},
+	}
+	for _, tc := range cases {
+		name := fmt.Sprintf("r%d_s%d_sp%d", tc.resources, tc.scopes, tc.spans)
+		b.Run(name, func(b *testing.B) {
+			cfg := NewDefaultConfig().(*Config)
+			cfg.HostIPEnabled = false // disable host IP to avoid network lookup in bench
+			next := &consumertest.TracesSink{}
+			p := NewTraceProcessor(cfg, next, zap.NewNop())
+			td := makeHTTPTracesForBench(tc.resources, tc.scopes, tc.spans)
+			ecsCtx := client.NewContext(context.Background(), client.Info{
+				Metadata: client.NewMetadata(map[string][]string{
+					"x-elastic-mapping-mode": {"ecs"},
+				}),
+			})
+			totalSpans := tc.resources * tc.scopes * tc.spans
+			b.ResetTimer()
+			b.ReportAllocs()
+			for i := 0; i < b.N; i++ {
+				if err := p.ConsumeTraces(ecsCtx, td); err != nil {
+					b.Fatal(err)
+				}
+			}
+			b.ReportMetric(float64(b.Elapsed().Nanoseconds())/float64(b.N*totalSpans), "ns/span")
+		})
+	}
+}
