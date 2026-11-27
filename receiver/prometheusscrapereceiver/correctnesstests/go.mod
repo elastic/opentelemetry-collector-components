@@ -43,26 +43,26 @@ require (
 	github.com/alecthomas/units v0.0.0-20240927000941-0f3dac36c52b // indirect
 	github.com/armon/go-metrics v0.4.1 // indirect
 	github.com/aws/aws-sdk-go v1.55.8 // indirect
-	github.com/aws/aws-sdk-go-v2 v1.48.0 // indirect
-	github.com/aws/aws-sdk-go-v2/config v1.33.21 // indirect
-	github.com/aws/aws-sdk-go-v2/credentials v1.21.3 // indirect
-	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.20.9 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/configsources v1.5.12 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.8.12 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/v4a v1.5.12 // indirect
+	github.com/aws/aws-sdk-go-v2 v1.48.1 // indirect
+	github.com/aws/aws-sdk-go-v2/config v1.33.22 // indirect
+	github.com/aws/aws-sdk-go-v2/credentials v1.21.4 // indirect
+	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.20.10 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/configsources v1.5.13 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.8.13 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/v4a v1.5.13 // indirect
 	github.com/aws/aws-sdk-go-v2/service/ec2 v1.339.0 // indirect
 	github.com/aws/aws-sdk-go-v2/service/ecs v1.101.0 // indirect
 	github.com/aws/aws-sdk-go-v2/service/elasticache v1.63.3 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.13.25 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.14.12 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.13.26 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.14.13 // indirect
 	github.com/aws/aws-sdk-go-v2/service/kafka v1.65.5 // indirect
 	github.com/aws/aws-sdk-go-v2/service/lightsail v1.66.5 // indirect
 	github.com/aws/aws-sdk-go-v2/service/rds v1.130.3 // indirect
-	github.com/aws/aws-sdk-go-v2/service/signin v1.14.0 // indirect
-	github.com/aws/aws-sdk-go-v2/service/sso v1.39.5 // indirect
-	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.44.5 // indirect
-	github.com/aws/aws-sdk-go-v2/service/sts v1.53.0 // indirect
-	github.com/aws/smithy-go v1.28.9 // indirect
+	github.com/aws/aws-sdk-go-v2/service/signin v1.14.1 // indirect
+	github.com/aws/aws-sdk-go-v2/service/sso v1.39.6 // indirect
+	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.44.6 // indirect
+	github.com/aws/aws-sdk-go-v2/service/sts v1.53.1 // indirect
+	github.com/aws/smithy-go v1.28.10 // indirect
 	github.com/bahlo/generic-list-go v0.2.0 // indirect
 	github.com/bboreham/go-loser v0.0.0-20230920113527-fcc2c21820a3 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
